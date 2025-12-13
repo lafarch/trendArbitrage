@@ -1,9 +1,5 @@
 # TrendArbitrage: AI-Powered Dropshipping Niche Discovery Engine
 
-![Python](https://img.shields.io/badge/python-3.8+-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Status](https://img.shields.io/badge/status-active-success.svg)
-
 > *"Find what's trending before the market floods. Digital arbitrage at scale."*
 
 A Data Science portfolio project that automatically identifies high-demand, low-supply product opportunities for dropshipping businesses by combining Google Trends analysis with marketplace scraping.
