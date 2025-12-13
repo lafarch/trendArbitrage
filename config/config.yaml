@@ -1,0 +1,37 @@
+# TrendArbitrage Configuration
+
+# Google Trends Settings
+trends:
+  geo: "US"  # Country code
+  timeframe: "now 7-d"  # Last 7 days
+  category: 0  # All categories
+
+# Marketplace Settings
+marketplaces:
+  ebay:
+    base_url: "https://www.ebay.com/sch/i.html"
+    search_param: "_nkw"
+    enabled: true
+    
+  amazon:
+    base_url: "https://www.amazon.com/s"
+    search_param: "k"
+    enabled: false  # Set to true if you want to scrape Amazon
+    
+# Scraping Behavior
+scraping:
+  delay_between_requests: 3  # Seconds (be respectful)
+  max_retries: 3
+  timeout: 10
+  use_selenium: false  # Set to true if sites block requests
+  
+# Scoring Thresholds
+scoring:
+  min_interest_score: 20  # Minimum Google Trends interest (0-100)
+  max_supply_count: 500   # Maximum products to consider "low supply"
+  top_n_results: 10       # Number of top opportunities to return
+  
+# Output Settings
+output:
+  csv_path: "data/output/opportunities.csv"
+  log_path: "logs/scraper.log"
