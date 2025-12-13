@@ -6,17 +6,6 @@ A Data Science portfolio project that automatically identifies high-demand, low-
 
 ---
 
-## 🎓 Academic Context
-
-**Course:** Data Science Portfolio Project  
-**Focus:** Market Intelligence & Automated Opportunity Detection  
-**Technologies:** Python, Web Scraping, Data Analysis, API Integration  
-**Presentation Date:** [Your Date]
-
----
-
-## 🚀 The Problem This Solves
-
 ### The Dropshipping Challenge
 
 Dropshippers face a critical problem: **finding products that sell before everyone else does**.
@@ -39,7 +28,16 @@ This project **automates that discovery process** by:
 
 ---
 
-## 🧠 The Algorithm: Digital Arbitrage Logic
+## The Algorithm: How Digital Arbitrage Identifies Profitable Products
+1. Signal Detection (The Trend): Scrape specific hashtags like #tiktokmademebuyit, #viral, or rising queries from Google Trends to find "keywords" (e.g., "Clash Royale Plush").
+
+2. Demand Velocity (The Validation): Check Google Trends for that keyword. Is the line going up vertically?
+
+3. Supply Scarcity (The Opportunity): Search that keyword on Amazon/eBay/AliExpress.
+    * Bad Signal: 10,000+ results (Oversaturated).
+    * Good Signal: < 50 results (Underserved Market).
+
+4. The "Alpha": High Search Volume + Low Product Count = Profitable Niche.
 
 ### Three-Phase Detection System
 
@@ -79,6 +77,26 @@ This project **automates that discovery process** by:
 ```
 
 ### The Math Behind Opportunity Score
+
+The Opportunity Score is a crucial metric that helps dropshippers identify profitable niches by quantifying the relationship between demand and supply.
+
+**Formula:**
+```python
+Opportunity Score = Search Interest / (Total Supply + 1)
+```
+
+**Why this works:**
+- **Numerator (Interest):** Measures market demand
+- **Denominator (Supply):** Measures competition
+- **Result:** Demand density per competitor
+
+**Real Examples:**
+
+| Product               | Interest | Supply | Score  | Verdict         |
+|-----------------------|----------|--------|--------|-----------------|
+| Clash Royale Plush    | 75       | 45     | 1.63   | 🚀 STRONG BUY   |
+| Generic Toy           | 30       | 5000   | 0.006  | ❌ Oversaturated|
+| Digital Circus Plush  | 85       | 120    | 0.70   | 💡 Consider     |
 
 ```python
 Opportunity Score = Search Interest / (Total Supply + 1)
