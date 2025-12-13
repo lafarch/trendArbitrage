@@ -117,7 +117,7 @@ Opportunity Score = Search Interest / (Total Supply + 1)
 
 ---
 
-## 📊 Tech Stack & Why
+## Tech Stack & Why
 
 ### Core Libraries
 
@@ -144,7 +144,7 @@ Opportunity Score = Search Interest / (Total Supply + 1)
 
 ---
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 - Python 3.8+
@@ -188,7 +188,7 @@ scoring:
 
 ---
 
-## 🎮 Usage Examples
+## Usage Examples
 
 ### Basic Usage: Analyze Default Keywords
 
