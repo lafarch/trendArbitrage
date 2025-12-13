@@ -377,7 +377,7 @@ python main.py --keywords "clash royale plush"
 
 ---
 
-## 🧪 Testing & Validation
+## Testing & Validation
 
 ### Unit Tests
 
@@ -399,7 +399,7 @@ pytest tests/test_scrapers.py -v
 
 ---
 
-## ⚠️ Limitations & Ethics
+##  Limitations & Ethics
 
 ### Technical Limitations
 
@@ -501,26 +501,6 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 - **Inspiration:** The Clash Royale dropshipper case study
 - **Data Source:** Google Trends (pytrends library)
 - **Scraping Framework:** BeautifulSoup4 community
-- **Mentors:** [Your Professor's Name]
-
----
-
-## 📞 Contact
-
-**Developer:** [Your Name]  
-**Email:** your.email@university.edu  
-**LinkedIn:** [Your LinkedIn]  
-**GitHub:** [@yourusername](https://github.com/yourusername)
-
----
-
-## 📊 Project Statistics
-
-- **Lines of Code:** ~1,500
-- **Modules:** 4 core modules
-- **Test Coverage:** 85%
-- **Avg Runtime:** 2-5 minutes for 10 keywords
-- **Success Rate:** 87% accurate supply counts (tested on 100 products)
 
 ---
 
