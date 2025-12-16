@@ -125,10 +125,15 @@ class TrendDetector:
 
                 if timeline_data:
                     # Extract values (interest scores)
-                    values = [
-                        item.get("values", [{}])[0].get("value", 0)
-                        for item in timeline_data
-                    ]
+                    # Handle both string and int values from API
+                    values = []
+                    for item in timeline_data:
+                        val = item.get("values", [{}])[0].get("value", 0)
+                        # Convert to int if it's a string
+                        try:
+                            values.append(int(val) if val else 0)
+                        except (ValueError, TypeError):
+                            values.append(0)
 
                     # Calculate metrics
                     current_interest = values[-1] if values else 0
