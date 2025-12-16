@@ -56,7 +56,7 @@ class TrendArbitrageEngine:
         trends_config = self.config.get("trends", {})
         self.trend_detector = TrendDetector(
             geo=trends_config.get("geo", "US"),
-            timeframe=trends_config.get("timeframe", "today 3-m"),
+            timeframe="today 3-m",  # Hardcode the correct syntax
         )
 
         scraping_config = self.config.get("scraping", {})
@@ -163,16 +163,10 @@ class TrendArbitrageEngine:
         These are based on recent viral trends and gaming products.
         """
         return [
-            "clash royale plush",
-            "skibidi toilet toy",
-            "digital circus plush",
-            "poppy playtime toy",
-            "among us plush",
-            "bluey toys",
-            "squishmallow rare",
-            "pokemon plush",
-            "roblox toy",
-            "minecraft plush",
+            "board games",
+            "vitamin c",
+            "christmas lights",
+            "winter clothes"
         ]
 
 
