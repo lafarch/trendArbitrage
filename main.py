@@ -128,7 +128,7 @@ class TrendArbitrageEngine:
         for keyword in trend_df["keyword"]:
             print(f"   Scraping: {keyword}...")
             supply_metrics = self.scraper.get_supply_metrics(
-                keyword, platforms=["ebay", "amazon"]
+                keyword, platforms=["amazon", "ebay", "walmart", "aliexpress"]
             )
             supply_data.append(supply_metrics)
 

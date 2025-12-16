@@ -20,7 +20,7 @@ import pandas as pd
 import time
 from typing import List, Dict, Optional
 import logging
-from serpapi import GoogleSearch
+from serpapi.google_search import GoogleSearch
 import os
 from dotenv import load_dotenv
 
