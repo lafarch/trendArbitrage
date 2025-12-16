@@ -1,8 +1,9 @@
+# %% [markdown]
 # TrendArbitrage - Exploratory Data Analysis
 # ============================================
 # This notebook demonstrates data exploration and visualization
 # for the TrendArbitrage project
-
+# %%
 # Cell 1: Setup
 """
 Import necessary libraries for analysis and visualization
@@ -19,6 +20,7 @@ plt.rcParams['figure.figsize'] = (12, 6)
 
 print("✅ Libraries imported successfully")
 
+# %%
 # Cell 2: Load Sample Data
 """
 Load the most recent opportunity report
@@ -52,6 +54,7 @@ else:
     })
     print("✅ Created sample data for demonstration")
 
+# %%
 # Cell 3: Data Overview
 """
 Get statistical summary of the data
@@ -66,6 +69,7 @@ print("DATA TYPES")
 print("="*60)
 print(df.dtypes)
 
+# %%
 # Cell 4: Distribution of Interest Scores
 """
 Visualize the distribution of search interest across products
@@ -98,6 +102,7 @@ print(f"📊 Mean Interest Score: {df['interest_score'].mean():.2f}")
 print(f"📊 Median Interest Score: {df['interest_score'].median():.2f}")
 print(f"📊 Std Dev: {df['interest_score'].std():.2f}")
 
+# %%
 # Cell 5: Supply vs Demand Scatter Plot
 """
 The KEY visualization: showing the relationship between demand and supply
@@ -155,6 +160,7 @@ plt.grid(alpha=0.3)
 plt.tight_layout()
 plt.show()
 
+# %%
 # Cell 6: Top 10 Opportunities Bar Chart
 """
 Visualize the top opportunities ranked by score
@@ -182,6 +188,7 @@ for i, (idx, row) in enumerate(top_10.iterrows()):
 plt.tight_layout()
 plt.show()
 
+# %%
 # Cell 7: Correlation Analysis
 """
 Analyze correlations between variables
@@ -203,6 +210,7 @@ print(f"• Interest vs Supply correlation: {correlation_df.loc['interest_score'
 print(f"• Interest vs Opportunity correlation: {correlation_df.loc['interest_score', 'opportunity_score']:.3f}")
 print(f"• Supply vs Opportunity correlation: {correlation_df.loc['total_supply', 'opportunity_score']:.3f}")
 
+# %%
 # Cell 8: Market Status Distribution
 """
 Show distribution of market statuses
@@ -219,6 +227,7 @@ if 'market_status' in df.columns:
     plt.tight_layout()
     plt.show()
 
+# %%
 # Cell 9: Generate Insights Report
 """
 Create a text-based insights summary
