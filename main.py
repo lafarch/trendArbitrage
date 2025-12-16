@@ -1,227 +1,265 @@
 """
-Phase 1: Trend Detection Module (SerpApi Version)
-==================================================
-Purpose: Identify high-demand keywords using SerpApi's Google Trends wrapper
+TrendArbitrage Main Execution Script (SerpApi Version)
+=======================================================
+Orchestrates the entire pipeline:
+1. Detect trending keywords (demand) using SerpApi
+2. Check marketplace supply
+3. Calculate opportunity scores
+4. Generate report
 
-Why SerpApi?
-- No rate limits (within your plan)
-- No IP bans or CAPTCHAs
-- Handles all anti-bot measures automatically
-- Returns clean, structured JSON data
-- Costs: $50/month for 5,000 searches (or 100 free/month)
+Usage:
+    python main.py
 
-Algorithm:
-1. Fetch trending searches OR analyze specific keywords
-2. Extract interest over time data
-3. Filter for keywords with rising momentum
+    Or with custom keywords:
+    python main.py --keywords "clash royale plush,skibidi toilet toy"
 """
 
+import sys
+import argparse
 import pandas as pd
-import time
-from typing import List, Dict, Optional
-import logging
-from serpapi import GoogleSearch
-import os
-from dotenv import load_dotenv
+from typing import List
 
-# Load environment variables
-load_dotenv()
+# Import our custom modules
+from src.trend_detector import TrendDetector
+from src.marketplace_scraper import MarketplaceScraper
+from src.opportunity_analyzer import OpportunityAnalyzer
+from src.utils import (
+    load_config,
+    setup_logging,
+    create_directories,
+    get_timestamp,
+    print_banner,
+    print_results_summary,
+)
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-
-class TrendDetector:
+class TrendArbitrageEngine:
     """
-    Detects trending keywords using SerpApi's Google Trends API.
+    Main orchestrator for the TrendArbitrage system.
     """
 
-    def __init__(self, geo: str = "US", timeframe: str = "today 3-m"):
+    def __init__(self, config_path: str = "config/config.yaml"):
         """
-        Initialize the SerpApi client.
+        Initialize the engine with configuration.
 
         Args:
-            geo: Country code (US, GB, etc.)
-            timeframe: Time window for trend analysis
-                      Options: 'now 1-H', 'now 4-H', 'now 1-d', 'today 1-m', 'today 3-m'
+            config_path: Path to YAML configuration file
         """
-        self.geo = geo
-        self.timeframe = timeframe
-        self.api_key = os.getenv("SERPAPI_KEY")
-        
-        if not self.api_key:
-            raise ValueError(
-                "❌ SERPAPI_KEY not found! "
-                "Please add it to your .env file or set it as an environment variable."
-            )
-        
-        logger.info(f"TrendDetector initialized for {geo} with timeframe {timeframe}")
-        logger.info("✅ Using SerpApi (no rate limits!)")
+        # Load config
+        self.config = load_config(config_path)
 
-    def get_daily_trending_searches(self, limit: int = 20) -> List[str]:
-        """
-        Fetch today's trending searches using SerpApi.
+        # Setup logging
+        log_path = self.config.get("output", {}).get("log_path", "logs/scraper.log")
+        setup_logging(log_path)
 
-        Args:
-            limit: Maximum number of trending keywords to return
+        # Initialize modules
+        trends_config = self.config.get("trends", {})
+        self.trend_detector = TrendDetector(
+            geo=trends_config.get("geo", "US"),
+            timeframe=trends_config.get("timeframe", "today 3-m"),
+        )
 
-        Returns:
-            List of trending keyword strings
-        """
-        try:
-            params = {
-                "engine": "google_trends_trending_now",
-                "frequency": "daily",
-                "geo": self.geo,
-                "api_key": self.api_key,
-            }
+        scraping_config = self.config.get("scraping", {})
+        self.scraper = MarketplaceScraper(
+            delay=scraping_config.get("delay_between_requests", 3),  # Back to 3 seconds
+            max_retries=scraping_config.get("max_retries", 3),
+        )
 
-            search = GoogleSearch(params)
-            results = search.get_dict()
+        scoring_config = self.config.get("scoring", {})
+        self.analyzer = OpportunityAnalyzer(
+            min_interest=scoring_config.get("min_interest_score", 20),
+            max_supply=scoring_config.get("max_supply_count", 500),
+        )
 
-            # Extract trending searches
-            trending_searches = results.get("trending_searches", [])
-            keywords = [item.get("query") for item in trending_searches[:limit]]
+        print("✅ TrendArbitrage Engine initialized successfully")
 
-            logger.info(f"Fetched {len(keywords)} trending searches")
-            return keywords
-
-        except Exception as e:
-            logger.error(f"Error fetching trending searches: {e}")
-            return []
-
-    def get_interest_over_time(self, keywords: List[str]) -> pd.DataFrame:
-        """
-        Get the search interest score for specific keywords over time.
-
-        Args:
-            keywords: List of keywords to analyze
-
-        Returns:
-            DataFrame with columns: keyword, interest_score, is_rising, velocity
-        """
-        results = []
-
-        for keyword in keywords:
-            try:
-                logger.info(f"📊 Analyzing: {keyword}")
-                
-                # Build SerpApi request
-                params = {
-                    "engine": "google_trends",
-                    "q": keyword,
-                    "data_type": "TIMESERIES",
-                    "date": self.timeframe,
-                    "geo": self.geo,
-                    "api_key": self.api_key,
-                }
-
-                search = GoogleSearch(params)
-                data = search.get_dict()
-
-                # Extract interest over time data
-                timeline_data = data.get("interest_over_time", {}).get("timeline_data", [])
-
-                if timeline_data:
-                    # Extract values (interest scores)
-                    values = [
-                        item.get("values", [{}])[0].get("value", 0)
-                        for item in timeline_data
-                    ]
-
-                    # Calculate metrics
-                    current_interest = values[-1] if values else 0
-                    
-                    # Early period average (first 20% of data)
-                    early_cutoff = max(2, len(values) // 5)
-                    early_avg = sum(values[:early_cutoff]) / early_cutoff if values else 0
-                    
-                    # Recent period average (last 20% of data)
-                    recent_cutoff = max(2, len(values) // 5)
-                    recent_avg = sum(values[-recent_cutoff:]) / recent_cutoff if values else 0
-                    
-                    # Is it rising? (50% increase = rising)
-                    is_rising = recent_avg > early_avg * 1.5 if early_avg > 0 else False
-                    
-                    # Velocity (rate of change)
-                    velocity = round(recent_avg - early_avg, 2)
-
-                    results.append({
-                        "keyword": keyword,
-                        "interest_score": int(current_interest),
-                        "is_rising": is_rising,
-                        "velocity": velocity,
-                    })
-
-                    logger.info(
-                        f"✓ {keyword}: interest={int(current_interest)}, "
-                        f"rising={is_rising}, velocity={velocity}"
-                    )
-                else:
-                    logger.warning(f"⚠️  No data available for '{keyword}'")
-
-                # Small delay to be respectful (not strictly necessary with SerpApi)
-                time.sleep(0.5)
-
-            except Exception as e:
-                logger.error(f"Error analyzing keyword '{keyword}': {e}")
-                continue
-
-        df = pd.DataFrame(results)
-        logger.info(f"✅ Analyzed {len(df)} keywords successfully")
-        return df
-
-    def filter_high_velocity_trends(
-        self, trend_df: pd.DataFrame, min_interest: int = 20
+    def run_pipeline(
+        self, keywords: List[str] = None, use_trending: bool = False
     ) -> pd.DataFrame:
         """
-        Filter trends to keep only products with sufficient interest.
+        Execute the full pipeline.
 
         Args:
-            trend_df: DataFrame from get_interest_over_time()
-            min_interest: Minimum interest score to consider
+            keywords: Optional list of keywords to analyze
+            use_trending: If True, fetch today's trending searches
 
         Returns:
-            Filtered DataFrame
+            DataFrame with opportunity analysis
         """
-        filtered = trend_df[
-            (trend_df["interest_score"] >= min_interest)
-        ].copy()
+        print("\n" + "=" * 70)
+        print("🚀 STARTING TRENDARBITRAGE PIPELINE")
+        print("=" * 70 + "\n")
 
-        # Sort by velocity (fastest growing first)
-        filtered = filtered.sort_values("velocity", ascending=False)
+        # PHASE 1: Get keywords to analyze
+        if use_trending:
+            print("📡 Phase 1: Fetching trending searches from Google...")
+            keywords = self.trend_detector.get_daily_trending_searches(limit=20)
+            print(f"✅ Found {len(keywords)} trending keywords\n")
+        elif keywords is None:
+            print("⚠️  No keywords provided. Using default test set...")
+            keywords = self._get_default_keywords()
 
-        logger.info(f"Filtered to {len(filtered)} products (including non-rising)")
-        return filtered
+        print(f"📋 Analyzing {len(keywords)} keywords:")
+        for i, kw in enumerate(keywords[:10], 1):
+            print(f"   {i}. {kw}")
+        if len(keywords) > 10:
+            print(f"   ... and {len(keywords) - 10} more")
+        print()
+
+        # PHASE 2: Get interest scores (DEMAND) using SerpApi
+        print("📈 Phase 2: Analyzing search interest (Demand Detection via SerpApi)...")
+        trend_df = self.trend_detector.get_interest_over_time(keywords)
+
+        if trend_df.empty:
+            print("❌ No trend data retrieved. Exiting.")
+            return pd.DataFrame()
+
+        # Accept partial results
+        if len(trend_df) < len(keywords):
+            print(f"⚠️  Only got {len(trend_df)}/{len(keywords)} keywords (some may have failed)")
+            print(f"✅ Continuing with available data...")
+        else:
+            print(f"✅ Retrieved interest data for {len(trend_df)} keywords\n")
+
+        # PHASE 3: Get supply counts (SUPPLY)
+        print("🛒 Phase 3: Checking marketplace supply (Saturation Check)...")
+        supply_data = []
+
+        for keyword in trend_df["keyword"]:
+            print(f"   Scraping: {keyword}...")
+            supply_metrics = self.scraper.get_supply_metrics(
+                keyword, platforms=["ebay", "amazon"]
+            )
+            supply_data.append(supply_metrics)
+
+        supply_df = pd.DataFrame(supply_data)
+        print(f"✅ Retrieved supply data for {len(supply_df)} keywords\n")
+
+        # PHASE 4: Calculate opportunity scores
+        print("🎯 Phase 4: Calculating Opportunity Scores...")
+        scored_df = self.analyzer.merge_and_score(trend_df, supply_df)
+        print(f"✅ Calculated scores for {len(scored_df)} products\n")
+
+        # PHASE 5: Generate final report
+        print("📊 Phase 5: Generating opportunity report...")
+        top_n = self.config.get("scoring", {}).get("top_n_results", 10)
+        report_df = self.analyzer.generate_report(scored_df, top_n=top_n)
+
+        # Save report
+        timestamp = get_timestamp()
+        output_path = f"data/output/opportunities_{timestamp}.csv"
+        self.analyzer.save_report(report_df, output_path)
+
+        print("\n" + "=" * 70)
+        print("✅ PIPELINE COMPLETED SUCCESSFULLY")
+        print("=" * 70)
+
+        return report_df
+
+    def _get_default_keywords(self) -> List[str]:
+        """
+        Return default test keywords.
+
+        These are based on recent viral trends and gaming products.
+        """
+        return [
+            "clash royale plush",
+            "skibidi toilet toy",
+            "digital circus plush",
+            "poppy playtime toy",
+            "among us plush",
+            "bluey toys",
+            "squishmallow rare",
+            "pokemon plush",
+            "roblox toy",
+            "minecraft plush",
+        ]
 
 
-def demo():
-    """Demo function to test the SerpApi trend detector."""
-    detector = TrendDetector(geo="US", timeframe="today 3-m")
+def parse_arguments():
+    """
+    Parse command line arguments.
+    """
+    parser = argparse.ArgumentParser(
+        description="TrendArbitrage: Discover profitable dropshipping niches (SerpApi Version)"
+    )
 
-    # Option 1: Get today's trending searches
-    print("\n=== Today's Trending Searches ===")
-    trending = detector.get_daily_trending_searches(limit=10)
-    for i, keyword in enumerate(trending, 1):
-        print(f"{i}. {keyword}")
+    parser.add_argument(
+        "--keywords",
+        type=str,
+        help='Comma-separated list of keywords to analyze (e.g., "toy 1,toy 2")',
+    )
 
-    # Option 2: Analyze specific keywords
-    print("\n=== Analyzing Specific Keywords ===")
-    test_keywords = [
-        "clash royale plush",
-        "skibidi toilet toy",
-        "digital circus plush",
-    ]
+    parser.add_argument(
+        "--trending",
+        action="store_true",
+        help="Use today's trending searches instead of custom keywords",
+    )
 
-    interest_df = detector.get_interest_over_time(test_keywords)
-    print("\n", interest_df)
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="config/config.yaml",
+        help="Path to configuration file",
+    )
 
-    # Filter for opportunities
-    print("\n=== High-Interest Keywords ===")
-    opportunities = detector.filter_high_velocity_trends(interest_df, min_interest=10)
-    print(opportunities)
+    return parser.parse_args()
+
+
+def main():
+    """
+    Main entry point for the application.
+    """
+    # Parse arguments
+    args = parse_arguments()
+
+    # Create necessary directories
+    create_directories()
+
+    # Print banner
+    print_banner()
+
+    try:
+        # Initialize engine
+        engine = TrendArbitrageEngine(config_path=args.config)
+
+        # Prepare keywords
+        keywords = None
+        if args.keywords:
+            keywords = [kw.strip() for kw in args.keywords.split(",")]
+
+        # Run pipeline
+        report_df = engine.run_pipeline(keywords=keywords, use_trending=args.trending)
+
+        # Display results
+        if not report_df.empty:
+            print_results_summary(report_df, top_n=3)
+
+            print("\n💡 Next Steps:")
+            print("   1. Research the top products on AliExpress/DHgate for suppliers")
+            print(
+                "   2. Create engaging short-form video content (TikTok, Instagram Reels)"
+            )
+            print("   3. Set up a Shopify store or use a dropshipping platform")
+            print("   4. Test with small ad budget to validate demand")
+            print("   5. Scale winners, kill losers")
+            print("\n📂 Full results saved to: data/output/")
+
+        else:
+            print(
+                "\n⚠️  No opportunities found. Try different keywords or time periods."
+            )
+
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Pipeline interrupted by user")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\n❌ Error: {e}")
+        import traceback
+
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    demo()
+    main()
