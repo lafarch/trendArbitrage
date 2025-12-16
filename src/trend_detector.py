@@ -1,26 +1,31 @@
 """
-Phase 1: Trend Detection Module
-================================
-Purpose: Identify high-demand keywords using Google Trends API
+Phase 1: Trend Detection Module (SerpApi Version)
+==================================================
+Purpose: Identify high-demand keywords using SerpApi's Google Trends wrapper
 
-Why pytrends?
-- Free access to Google Trends data
-- No API key required
-- Returns normalized interest scores (0-100)
-- Can detect rising searches and related queries
+Why SerpApi?
+- No rate limits (within your plan)
+- No IP bans or CAPTCHAs
+- Handles all anti-bot measures automatically
+- Returns clean, structured JSON data
+- Costs: $50/month for 5,000 searches (or 100 free/month)
 
 Algorithm:
-1. Fetch daily trending searches OR analyze specific keywords
-2. Extract interest over time (velocity check)
+1. Fetch trending searches OR analyze specific keywords
+2. Extract interest over time data
 3. Filter for keywords with rising momentum
 """
 
 import pandas as pd
-from pytrends.request import TrendReq
 import time
 from typing import List, Dict, Optional
 import logging
-import random
+from serpapi import GoogleSearch
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -29,180 +34,191 @@ logger = logging.getLogger(__name__)
 
 class TrendDetector:
     """
-    Detects trending keywords and measures their search interest velocity.
+    Detects trending keywords using SerpApi's Google Trends API.
     """
-    
-    def __init__(self, geo: str = "US", timeframe: str = "now 7-d"):
+
+    def __init__(self, geo: str = "US", timeframe: str = "today 3-m"):
         """
-        Initialize the Google Trends API client.
-        
+        Initialize the SerpApi client.
+
         Args:
             geo: Country code (US, GB, etc.)
             timeframe: Time window for trend analysis
-                      Options: 'now 1-H', 'now 4-H', 'now 1-d', 'now 7-d', 'today 1-m'
+                      Options: 'now 1-H', 'now 4-H', 'now 1-d', 'today 1-m', 'today 3-m'
         """
         self.geo = geo
         self.timeframe = timeframe
+        self.api_key = os.getenv("SERPAPI_KEY")
         
-        # Initialize pytrends with custom settings to avoid rate limits
-        self.pytrends = TrendReq(
-            hl='en-US',
-            tz=360,
-            timeout=(10, 25),  # Connect timeout, read timeout
-            retries=2,
-            backoff_factor=0.5
-        )
-
-        time.sleep(random.uniform(3, 8))
-
+        if not self.api_key:
+            raise ValueError(
+                "❌ SERPAPI_KEY not found! "
+                "Please add it to your .env file or set it as an environment variable."
+            )
+        
         logger.info(f"TrendDetector initialized for {geo} with timeframe {timeframe}")
-    
-    def get_daily_trending_searches(self) -> List[str]:
+        logger.info("✅ Using SerpApi (no rate limits!)")
+
+    def get_daily_trending_searches(self, limit: int = 20) -> List[str]:
         """
-        Fetch today's trending searches from Google Trends.
-        
+        Fetch today's trending searches using SerpApi.
+
+        Args:
+            limit: Maximum number of trending keywords to return
+
         Returns:
             List of trending keyword strings
-            
-        Why this matters:
-        - These are REAL-TIME trends that people are searching NOW
-        - First-mover advantage: catch trends before markets saturate
         """
         try:
-            # Get trending searches for the specified country
-            trending_df = self.pytrends.trending_searches(pn=self.geo.lower())
-            
-            # Convert DataFrame to list
-            trending_keywords = trending_df[0].tolist()
-            
-            logger.info(f"Fetched {len(trending_keywords)} trending searches")
-            return trending_keywords[:20]  # Return top 20
-            
+            params = {
+                "engine": "google_trends_trending_now",
+                "frequency": "daily",
+                "geo": self.geo,
+                "api_key": self.api_key,
+            }
+
+            search = GoogleSearch(params)
+            results = search.get_dict()
+
+            # Extract trending searches
+            trending_searches = results.get("trending_searches", [])
+            keywords = [item.get("query") for item in trending_searches[:limit]]
+
+            logger.info(f"Fetched {len(keywords)} trending searches")
+            return keywords
+
         except Exception as e:
             logger.error(f"Error fetching trending searches: {e}")
             return []
-    
+
     def get_interest_over_time(self, keywords: List[str]) -> pd.DataFrame:
+        """
+        Get the search interest score for specific keywords over time.
+
+        Args:
+            keywords: List of keywords to analyze
+
+        Returns:
+            DataFrame with columns: keyword, interest_score, is_rising, velocity
+        """
         results = []
-        
-        # Process only 2 keywords at a time (instead of 5)
-        for i in range(0, len(keywords), 2):
-            batch = keywords[i : i + 2]
-            
+
+        for keyword in keywords:
             try:
-                # Build payload for this batch
-                self.pytrends.build_payload(
-                    batch,
-                    cat=0,
-                    timeframe=self.timeframe,
-                    geo=self.geo,
-                )
+                logger.info(f"📊 Analyzing: {keyword}")
                 
-                # Get interest over time
-                interest_df = self.pytrends.interest_over_time()
-                
-                if not interest_df.empty:
-                    interest_df = interest_df.drop(
-                        columns=["isPartial"], errors="ignore"
-                    )
+                # Build SerpApi request
+                params = {
+                    "engine": "google_trends",
+                    "q": keyword,
+                    "data_type": "TIMESERIES",
+                    "date": self.timeframe,
+                    "geo": self.geo,
+                    "api_key": self.api_key,
+                }
+
+                search = GoogleSearch(params)
+                data = search.get_dict()
+
+                # Extract interest over time data
+                timeline_data = data.get("interest_over_time", {}).get("timeline_data", [])
+
+                if timeline_data:
+                    # Extract values (interest scores)
+                    values = [
+                        item.get("values", [{}])[0].get("value", 0)
+                        for item in timeline_data
+                    ]
+
+                    # Calculate metrics
+                    current_interest = values[-1] if values else 0
                     
-                    # Calculate metrics for each keyword
-                    for keyword in batch:
-                        if keyword in interest_df.columns:
-                            scores = interest_df[keyword].values
-                            
-                            current_interest = scores[-1]
-                            
-                            early_avg = scores[:2].mean() if len(scores) >= 2 else 0
-                            recent_avg = (
-                                scores[-2:].mean()
-                                if len(scores) >= 2
-                                else current_interest
-                            )
-                            is_rising = recent_avg > early_avg * 1.5
-                            
-                            results.append(
-                                {
-                                    "keyword": keyword,
-                                    "interest_score": int(current_interest),
-                                    "is_rising": is_rising,
-                                    "velocity": round(recent_avg - early_avg, 2),
-                                }
-                            )
-                            
-                            logger.info(f"✓ {keyword}: interest={int(current_interest)}")
-                
-                # CRITICAL: Long random delay between requests
-                delay = random.uniform(20, 30)
-                logger.info(f"⏳ Waiting {delay:.1f}s before next batch...")
-                time.sleep(delay)
-                
+                    # Early period average (first 20% of data)
+                    early_cutoff = max(2, len(values) // 5)
+                    early_avg = sum(values[:early_cutoff]) / early_cutoff if values else 0
+                    
+                    # Recent period average (last 20% of data)
+                    recent_cutoff = max(2, len(values) // 5)
+                    recent_avg = sum(values[-recent_cutoff:]) / recent_cutoff if values else 0
+                    
+                    # Is it rising? (50% increase = rising)
+                    is_rising = recent_avg > early_avg * 1.5 if early_avg > 0 else False
+                    
+                    # Velocity (rate of change)
+                    velocity = round(recent_avg - early_avg, 2)
+
+                    results.append({
+                        "keyword": keyword,
+                        "interest_score": int(current_interest),
+                        "is_rising": is_rising,
+                        "velocity": velocity,
+                    })
+
+                    logger.info(
+                        f"✓ {keyword}: interest={int(current_interest)}, "
+                        f"rising={is_rising}, velocity={velocity}"
+                    )
+                else:
+                    logger.warning(f"⚠️  No data available for '{keyword}'")
+
+                # Small delay to be respectful (not strictly necessary with SerpApi)
+                time.sleep(0.5)
+
             except Exception as e:
-                logger.error(f"Error analyzing keywords {batch}: {e}")
-                # If we hit an error, wait even LONGER
-                logger.warning("⚠️  Error encountered, waiting 60s before continuing...")
-                time.sleep(60)
+                logger.error(f"Error analyzing keyword '{keyword}': {e}")
                 continue
-        
+
         df = pd.DataFrame(results)
-        logger.info(f"Analyzed {len(df)} keywords for interest scores")
+        logger.info(f"✅ Analyzed {len(df)} keywords successfully")
         return df
-    
+
     def filter_high_velocity_trends(
-        self, 
-        trend_df: pd.DataFrame, 
-        min_interest: int = 20
+        self, trend_df: pd.DataFrame, min_interest: int = 20
     ) -> pd.DataFrame:
         """
-        Filter trends to keep only high-momentum keywords.
-        
+        Filter trends to keep only products with sufficient interest.
+
         Args:
             trend_df: DataFrame from get_interest_over_time()
             min_interest: Minimum interest score to consider
-            
+
         Returns:
-            Filtered DataFrame with only promising trends
-            
-        Why filter?
-        - We want RISING trends (early signals)
-        - We want SUFFICIENT volume (enough demand to profit)
+            Filtered DataFrame
         """
         filtered = trend_df[
-            (trend_df['interest_score'] >= min_interest) &
-            (trend_df['is_rising'] == True)
+            (trend_df["interest_score"] >= min_interest)
         ].copy()
-        
+
         # Sort by velocity (fastest growing first)
-        filtered = filtered.sort_values('velocity', ascending=False)
-        
-        logger.info(f"Filtered to {len(filtered)} high-velocity trends")
+        filtered = filtered.sort_values("velocity", ascending=False)
+
+        logger.info(f"Filtered to {len(filtered)} products (including non-rising)")
         return filtered
 
 
 def demo():
-    """Demo function to test the trend detector."""
-    detector = TrendDetector(geo="US", timeframe="now 7-d")
-    
+    """Demo function to test the SerpApi trend detector."""
+    detector = TrendDetector(geo="US", timeframe="today 3-m")
+
     # Option 1: Get today's trending searches
     print("\n=== Today's Trending Searches ===")
-    trending = detector.get_daily_trending_searches()
-    print(trending[:10])
-    
+    trending = detector.get_daily_trending_searches(limit=10)
+    for i, keyword in enumerate(trending, 1):
+        print(f"{i}. {keyword}")
+
     # Option 2: Analyze specific keywords
     print("\n=== Analyzing Specific Keywords ===")
     test_keywords = [
         "clash royale plush",
         "skibidi toilet toy",
         "digital circus plush",
-        "poppy playtime toy",
-        "among us plush"
     ]
-    
+
     interest_df = detector.get_interest_over_time(test_keywords)
-    print(interest_df)
-    
-    # Filter for high-velocity trends
-    print("\n=== High-Velocity Opportunities ===")
+    print("\n", interest_df)
+
+    # Filter for opportunities
+    print("\n=== High-Interest Keywords ===")
     opportunities = detector.filter_high_velocity_trends(interest_df, min_interest=10)
     print(opportunities)
 
