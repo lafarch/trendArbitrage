@@ -23,6 +23,7 @@ import logging
 from serpapi.google_search import GoogleSearch
 import os
 from dotenv import load_dotenv
+import numpy as np
 
 # Load environment variables
 load_dotenv()
@@ -30,6 +31,28 @@ load_dotenv()
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def compute_trend_slope(values: list) -> float:
+    if len(values) < 2:
+        return 0.0
+    x = np.arange(len(values))
+    slope = np.polyfit(x, values, 1)[0]
+    return round(float(slope), 3)
+
+
+def compute_consistency(values: list) -> float:
+    mean = np.mean(values)
+    if mean == 0:
+        return 0.0
+    return round(1 - (np.std(values) / mean), 3)
+
+
+def detect_recent_spike(values: list) -> bool:
+    if len(values) < 6:
+        return False
+    recent = values[-1]
+    baseline = np.mean(values[:-3])
+    return recent > baseline * 1.3
 
 
 class TrendDetector:
@@ -136,33 +159,49 @@ class TrendDetector:
                             values.append(0)
 
                     # Calculate metrics
-                    current_interest = values[-1] if values else 0
-                    
-                    # Early period average (first 20% of data)
-                    early_cutoff = max(2, len(values) // 5)
-                    early_avg = sum(values[:early_cutoff]) / early_cutoff if values else 0
-                    
-                    # Recent period average (last 20% of data)
-                    recent_cutoff = max(2, len(values) // 5)
-                    recent_avg = sum(values[-recent_cutoff:]) / recent_cutoff if values else 0
-                    
-                    # Is it rising? (50% increase = rising)
-                    is_rising = recent_avg > early_avg * 1.5 if early_avg > 0 else False
-                    
-                    # Velocity (rate of change)
-                    velocity = round(recent_avg - early_avg, 2)
+                    avg_interest = round(float(np.mean(values)), 2)
+                    trend_slope = compute_trend_slope(values)
+                    trend_consistency = compute_consistency(values)
+                    recent_spike = detect_recent_spike(values)
+
+                    is_rising = trend_slope > 0
+                    velocity = trend_slope  # redefine velocity as slope
+
+                    viability_score = 0
+
+                    if avg_interest >= 20:
+                        viability_score += 25
+                    if trend_slope > 0:
+                        viability_score += 25
+                    if trend_consistency >= 0.5:
+                        viability_score += 20
+                    if recent_spike:
+                        viability_score += 15
+                    if avg_interest >= 50:
+                        viability_score += 15
 
                     results.append({
                         "keyword": keyword,
-                        "interest_score": int(current_interest),
+                        "interest_score": avg_interest,
+                        "trend_slope": trend_slope,
+                        "trend_consistency": trend_consistency,
+                        "recent_spike": recent_spike,
+                        "viability_score": viability_score,
                         "is_rising": is_rising,
                         "velocity": velocity,
                     })
 
+
+
                     logger.info(
-                        f"✓ {keyword}: interest={int(current_interest)}, "
-                        f"rising={is_rising}, velocity={velocity}"
+                        f"✓ {keyword}: "
+                        f"avg_interest={avg_interest}, "
+                        f"slope={trend_slope}, "
+                        f"consistency={trend_consistency}, "
+                        f"spike={recent_spike}, "
+                        f"viability={viability_score}"
                     )
+
                 else:
                     logger.warning(f"⚠️  No data available for '{keyword}'")
 
@@ -172,7 +211,25 @@ class TrendDetector:
             except Exception as e:
                 logger.error(f"Error analyzing keyword '{keyword}': {e}")
                 continue
+        df = pd.DataFrame(results)
 
+        def compute_viability(row):
+            score = 0
+
+            if row["interest_score"] >= 20:
+                score += 25
+            if row["trend_slope"] > 0:
+                score += 25
+            if row["trend_consistency"] >= 0.5:
+                score += 20
+            if row["recent_spike"]:
+                score += 15
+            if row["interest_score"] >= 50:
+                score += 15
+
+            return score
+
+        df["viability_score"] = df.apply(compute_viability, axis=1)
         df = pd.DataFrame(results)
         logger.info(f"✅ Analyzed {len(df)} keywords successfully")
         return df

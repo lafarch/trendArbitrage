@@ -1,5 +1,16 @@
+"""
+Phase 4: Opportunity Analyzer Module (Demand-Aware Version)
+===========================================================
+Purpose: Calculate the "Opportunity Score" and identify winning products
+
+Key change:
+- Uses viability_score (absolute demand signal) when present
+- Falls back to interest_score for backward compatibility
+"""
+
 import pandas as pd
 import logging
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,28 +28,65 @@ class OpportunityAnalyzer:
             f"OpportunityAnalyzer initialized (min_interest={min_interest}, max_supply={max_supply})"
         )
 
-    def calculate_opportunity_score(self, interest_score: float, supply_count: int) -> float:
-        if supply_count < 0 or interest_score <= 0:
-            return 0.0
-        return round(interest_score / (supply_count + 1), 4)
+    # ------------------------------------------------------------------
+    # Demand / Supply math
+    # ------------------------------------------------------------------
 
-    def merge_and_score(self, trend_df: pd.DataFrame, supply_df: pd.DataFrame) -> pd.DataFrame:
+    def calculate_opportunity_score(self, demand: float, supply: int) -> float:
+        """
+        Opportunity Score = Demand / (Supply + 1)
+
+        Demand:
+        - viability_score if available (0-100)
+        - otherwise interest_score (0-100)
+        """
+        if supply < 0 or demand <= 0:
+            return 0.0
+
+        score = demand / (supply + 1)
+        return round(score, 4)
+
+    # ------------------------------------------------------------------
+    # Core pipeline step
+    # ------------------------------------------------------------------
+
+    def merge_and_score(
+        self, trend_df: pd.DataFrame, supply_df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """
+        Merge demand and supply data and calculate opportunity scores.
+        """
         merged = pd.merge(trend_df, supply_df, on="keyword", how="inner")
+
+        # Decide which demand signal to use
+        if "viability_score" in merged.columns:
+            logger.info("Using viability_score as demand signal")
+            merged["demand_signal"] = merged["viability_score"]
+        else:
+            logger.warning("viability_score not found, falling back to interest_score")
+            merged["demand_signal"] = merged["interest_score"]
 
         merged["opportunity_score"] = merged.apply(
             lambda row: self.calculate_opportunity_score(
-                row["interest_score"], row["total_supply"]
+                row["demand_signal"], row["total_supply"]
             ),
             axis=1,
         )
 
+        logger.info(f"Calculated opportunity scores for {len(merged)} products")
         return merged
+
+    # ------------------------------------------------------------------
+    # Classification & reporting
+    # ------------------------------------------------------------------
 
     def add_classifications(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
 
         def classify_market(supply):
-            if supply < 50:
+            if supply < 0:
+                return "Unknown"
+            elif supply < 50:
                 return "Underserved ⭐⭐⭐"
             elif supply < 200:
                 return "Low Competition ⭐⭐"
@@ -49,39 +97,30 @@ class OpportunityAnalyzer:
 
         df["market_status"] = df["total_supply"].apply(classify_market)
 
-        def recommendation(row):
-            amazon_supply = row.get("amazon_count", 0)
-
-            # 🔴 HARD OVERRIDE RULE
-            if amazon_supply >= 3000:
-                return "AVOID ❌ (Amazon-dominated)"
-
-            if not row.get("is_rising", False):
+        def get_recommendation(row):
+            if row.get("is_rising") is False:
                 return "Avoid ❌ (Stagnant)"
 
-            score = row["opportunity_score"]
-            if score > 1.0:
+            if row["opportunity_score"] > 1.0:
                 return "STRONG BUY 🚀"
-            elif score > 0.5:
+            elif row["opportunity_score"] > 0.5:
                 return "Consider 💡"
-            elif score > 0.1:
+            elif row["opportunity_score"] > 0.1:
                 return "Risky ⚠️"
             else:
                 return "Avoid ❌ (Saturated)"
 
-        df["recommendation"] = df.apply(recommendation, axis=1)
+        df["recommendation"] = df.apply(get_recommendation, axis=1)
         return df
 
     def generate_report(self, df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
-        df = self.add_classifications(df)
+        opportunities = self.add_classifications(df)
 
-        cols = [
+        report_columns = [
             "keyword",
+            "demand_signal",
             "interest_score",
-            "amazon_count",
-            "ebay_count",
-            "walmart_count",
-            "aliexpress_count",
+            "viability_score",
             "total_supply",
             "opportunity_score",
             "market_status",
@@ -89,10 +128,13 @@ class OpportunityAnalyzer:
             "is_rising",
             "velocity",
         ]
-        cols = [c for c in cols if c in df.columns]
 
-        report = df[cols].head(top_n).copy()
+        report_columns = [c for c in report_columns if c in opportunities.columns]
+        report = opportunities[report_columns].head(top_n)
+
         report.insert(0, "rank", range(1, len(report) + 1))
+
+        logger.info(f"Generated report with {len(report)} opportunities")
         return report
 
     def save_report(self, df: pd.DataFrame, filepath: str):
