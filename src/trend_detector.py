@@ -32,6 +32,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def compute_trend_slope(values: list) -> float:
     if len(values) < 2:
         return 0.0
@@ -72,13 +73,13 @@ class TrendDetector:
         self.geo = geo
         self.timeframe = timeframe
         self.api_key = os.getenv("SERPAPI_KEY")
-        
+
         if not self.api_key:
             raise ValueError(
                 "❌ SERPAPI_KEY not found! "
                 "Please add it to your .env file or set it as an environment variable."
             )
-        
+
         logger.info(f"TrendDetector initialized for {geo} with timeframe {timeframe}")
         logger.info("✅ Using SerpApi (no rate limits!)")
 
@@ -129,7 +130,7 @@ class TrendDetector:
         for keyword in keywords:
             try:
                 logger.info(f"📊 Analyzing: {keyword}")
-                
+
                 # Build SerpApi request
                 params = {
                     "engine": "google_trends",
@@ -144,7 +145,9 @@ class TrendDetector:
                 data = search.get_dict()
 
                 # Extract interest over time data
-                timeline_data = data.get("interest_over_time", {}).get("timeline_data", [])
+                timeline_data = data.get("interest_over_time", {}).get(
+                    "timeline_data", []
+                )
 
                 if timeline_data:
                     # Extract values (interest scores)
@@ -180,18 +183,18 @@ class TrendDetector:
                     if avg_interest >= 50:
                         viability_score += 15
 
-                    results.append({
-                        "keyword": keyword,
-                        "interest_score": avg_interest,
-                        "trend_slope": trend_slope,
-                        "trend_consistency": trend_consistency,
-                        "recent_spike": recent_spike,
-                        "viability_score": viability_score,
-                        "is_rising": is_rising,
-                        "velocity": velocity,
-                    })
-
-
+                    results.append(
+                        {
+                            "keyword": keyword,
+                            "interest_score": avg_interest,
+                            "trend_slope": trend_slope,
+                            "trend_consistency": trend_consistency,
+                            "recent_spike": recent_spike,
+                            "viability_score": viability_score,
+                            "is_rising": is_rising,
+                            "velocity": velocity,
+                        }
+                    )
 
                     logger.info(
                         f"✓ {keyword}: "
@@ -212,6 +215,19 @@ class TrendDetector:
                 logger.error(f"Error analyzing keyword '{keyword}': {e}")
                 continue
         df = pd.DataFrame(results)
+
+        if df.empty:
+            logger.warning("No se encontraron datos para las keywords proporcionadas.")
+            # Retorna un DataFrame vacío pero con las columnas esperadas para no romper el pipeline
+            return pd.DataFrame(
+                columns=[
+                    "keyword",
+                    "interest_score",
+                    "viability_score",
+                    "is_rising",
+                    "velocity",
+                ]
+            )
 
         def compute_viability(row):
             score = 0
@@ -247,9 +263,7 @@ class TrendDetector:
         Returns:
             Filtered DataFrame
         """
-        filtered = trend_df[
-            (trend_df["interest_score"] >= min_interest)
-        ].copy()
+        filtered = trend_df[(trend_df["interest_score"] >= min_interest)].copy()
 
         # Sort by velocity (fastest growing first)
         filtered = filtered.sort_values("velocity", ascending=False)
