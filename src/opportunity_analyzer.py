@@ -81,31 +81,36 @@ class OpportunityAnalyzer:
     # ------------------------------------------------------------------
 
     def add_classifications(self, df: pd.DataFrame) -> pd.DataFrame:
-        df = df.copy()
+        """
+        Calcula el score y añade etiquetas de mercado y recomendaciones.
+        """
+        # --- PASO CRÍTICO: Calcular el score primero ---
+        # Usamos interest_score como demanda y total_supply como oferta
+        df["opportunity_score"] = df.apply(
+            lambda x: self.calculate_opportunity_score(x["interest_score"], x["total_supply"]), 
+            axis=1
+        )
 
-        def classify_market(supply):
-            if supply < 0:
-                return "Unknown"
-            elif supply < 50:
-                return "Underserved ⭐⭐⭐"
-            elif supply < 200:
-                return "Low Competition ⭐⭐"
-            elif supply < 500:
-                return "Moderate Competition ⭐"
-            else:
-                return "Oversaturated ❌"
+        def classify_market(row):
+            supply = row["total_supply"]
+            if supply < 100: return "Low Supply (Blue Ocean) 🌊"
+            if supply < 500: return "Moderate Supply 🟢"
+            return "Saturated Market 🔴"
 
-        df["market_status"] = df["total_supply"].apply(classify_market)
+        df["market_status"] = df.apply(classify_market, axis=1)
 
         def get_recommendation(row):
+            # Verificamos que la columna exista por seguridad
+            score = row.get("opportunity_score", 0)
+            
             if row.get("is_rising") is False:
                 return "Avoid ❌ (Stagnant)"
 
-            if row["opportunity_score"] > 1.0:
+            if score > 1.0:
                 return "STRONG BUY 🚀"
-            elif row["opportunity_score"] > 0.5:
+            elif score > 0.5:
                 return "Consider 💡"
-            elif row["opportunity_score"] > 0.1:
+            elif score > 0.1:
                 return "Risky ⚠️"
             else:
                 return "Avoid ❌ (Saturated)"
@@ -116,6 +121,7 @@ class OpportunityAnalyzer:
     def generate_report(self, df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
         opportunities = self.add_classifications(df)
 
+        # Agregamos 'history' a la lista de columnas permitidas
         report_columns = [
             "keyword",
             "demand_signal",
@@ -127,12 +133,19 @@ class OpportunityAnalyzer:
             "recommendation",
             "is_rising",
             "velocity",
+            "history", # <--- CRÍTICO: Para que la gráfica reciba datos
+            "amazon_count",
+            "ebay_count"
         ]
 
+        # Solo filtramos las que realmente existan en el DataFrame
         report_columns = [c for c in report_columns if c in opportunities.columns]
+        
+        # IMPORTANTE: Quitamos el .head(top_n) si quieres ver todos los resultados en el dashboard
         report = opportunities[report_columns].head(top_n)
 
-        report.insert(0, "rank", range(1, len(report) + 1))
+        if not report.empty:
+            report.insert(0, "rank", range(1, len(report) + 1))
 
         logger.info(f"Generated report with {len(report)} opportunities")
         return report

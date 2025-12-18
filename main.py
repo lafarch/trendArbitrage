@@ -58,76 +58,58 @@ class TrendArbitrageEngine:
             )
         )
 
-    def run_pipeline(
-        self, keywords: List[str] = None, use_trending: bool = False
-    ) -> pd.DataFrame:
+    def run_pipeline(self, keywords: List[str] = None, use_trending: bool = False) -> pd.DataFrame:
+        """
+        Ejecuta el flujo completo: Detección -> Extracción -> Análisis.
+        """
+        # 1. Obtener Keywords (si no se proporcionan, buscar tendencias o usar default)
+        if not keywords:
+            if use_trending:
+                console.print("[bold blue]Fetching trending searches...[/bold blue]")
+                keywords = self.trend_detector.get_daily_trending_searches()
+            else:
+                keywords = self._get_default_keywords()
 
-        console.print(
-            Panel(
-                "[bold cyan]Starting TrendArbitrage Pipeline[/bold cyan]", expand=False
-            )
-        )
-
-        # -------------------- PHASE 1 --------------------
-        console.rule("[bold]Phase 1: Keyword Selection[/bold]")
-
-        if use_trending:
-            keywords = self.trend_detector.get_daily_trending_searches(limit=20)
-            console.print(f"Using {len(keywords)} trending searches")
-        elif keywords is None:
-            keywords = self._get_default_keywords()
-            console.print("Using default test keywords")
-
-        console.print(f"Keywords to analyze: {', '.join(keywords)}")
-
-        # -------------------- PHASE 2 --------------------
-        console.rule("[bold]Phase 2: Demand Analysis[/bold]")
-        trend_df = self.trend_detector.get_interest_over_time(keywords)
-
-        if trend_df.empty:
-            console.print("[red]No demand data retrieved. Aborting.[/red]")
+        if not keywords:
+            console.print("[red]No keywords found to analyze.[/red]")
             return pd.DataFrame()
 
-        console.print(f"Demand data collected for {len(trend_df)} keywords")
+        # 2. Fase de Detección de Demanda (Genera la columna 'history')
+        console.print(f"[bold green]Analyzing demand for: {', '.join(keywords)}[/bold green]")
+        interest_df = self.trend_detector.get_interest_over_time(keywords)
+        
+        if interest_df.empty:
+            console.print("[yellow]No trend data available for these keywords.[/yellow]")
+            return pd.DataFrame()
 
-        # -------------------- PHASE 3 --------------------
-        console.rule("[bold]Phase 3: Supply Analysis[/bold]")
+        # 3. Fase de Verificación de Suministro (Marketplace Scraper)
+        console.print("[bold green]Checking marketplace supply...[/bold green]")
         supply_data = []
+        for kw in interest_df["keyword"]:
+            # Obtenemos métricas de Amazon y eBay
+            metrics = self.scraper.get_supply_metrics(kw)
+            supply_data.append(metrics)
+        
+        supply_df = pd.DataFrame(supply_data)
 
-        for keyword in trend_df["keyword"]:
-            console.print(f"Checking supply for: [cyan]{keyword}[/cyan]")
-            supply_data.append(
-                self.scraper.get_supply_metrics(
-                    keyword,
-                    platforms=["amazon", "ebay", "walmart", "aliexpress"],
+        # Unimos los datos de interés (que trae 'history') con los de suministro
+        combined_df = pd.merge(interest_df, supply_df, on="keyword")
+
+        # Ahora el analyzer calculará el score y generará el reporte
+        report_df = self.analyzer.generate_report(combined_df)
+
+        # 6. Guardar y Retornar
+        if not report_df.empty:
+            output_path = self.config.get("output", {}).get("csv_path", "data/output/report.csv")
+            self.analyzer.save_report(report_df, output_path)
+            
+            console.print(
+                Panel(
+                    f"[green]Pipeline completed successfully[/green]\nResults for {len(report_df)} products.",
+                    border_style="green",
                 )
             )
-
-        supply_df = pd.DataFrame(supply_data)
-        console.print(f"Supply data collected for {len(supply_df)} keywords")
-
-        # -------------------- PHASE 4 --------------------
-        console.rule("[bold]Phase 4: Opportunity Scoring[/bold]")
-        scored_df = self.analyzer.merge_and_score(trend_df, supply_df)
-
-        console.print(f"Opportunity scores calculated for {len(scored_df)} items")
-
-        # -------------------- PHASE 5 --------------------
-        console.rule("[bold]Phase 5: Reporting[/bold]")
-        top_n = self.config.get("scoring", {}).get("top_n_results", 10)
-        report_df = self.analyzer.generate_report(scored_df, top_n=top_n)
-
-        timestamp = get_timestamp()
-        output_path = f"data/output/opportunities_{timestamp}.csv"
-        self.analyzer.save_report(report_df, output_path)
-
-        console.print(
-            Panel(
-                f"[green]Pipeline completed successfully[/green]\nSaved to {output_path}",
-                border_style="green",
-            )
-        )
-
+        
         return report_df
 
     def _get_default_keywords(self) -> List[str]:
