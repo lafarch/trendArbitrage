@@ -63,7 +63,9 @@ class TrendArbitrageEngine:
     ) -> pd.DataFrame:
 
         console.print(
-            Panel("[bold cyan]Starting TrendArbitrage Pipeline[/bold cyan]", expand=False)
+            Panel(
+                "[bold cyan]Starting TrendArbitrage Pipeline[/bold cyan]", expand=False
+            )
         )
 
         # -------------------- PHASE 1 --------------------
@@ -153,14 +155,10 @@ def main():
         engine = TrendArbitrageEngine(config_path=args.config)
 
         keywords = (
-            [kw.strip() for kw in args.keywords.split(",")]
-            if args.keywords
-            else None
+            [kw.strip() for kw in args.keywords.split(",")] if args.keywords else None
         )
 
-        report_df = engine.run_pipeline(
-            keywords=keywords, use_trending=args.trending
-        )
+        report_df = engine.run_pipeline(keywords=keywords, use_trending=args.trending)
 
         if not report_df.empty:
             print_results_summary(report_df, top_n=3)
