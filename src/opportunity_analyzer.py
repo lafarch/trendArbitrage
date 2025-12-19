@@ -34,17 +34,33 @@ class OpportunityAnalyzer:
 
     def calculate_opportunity_score(self, demand: float, supply: int) -> float:
         """
-        Opportunity Score = Demand / (Supply + 1)
-
-        Demand:
-        - viability_score if available (0-100)
-        - otherwise interest_score (0-100)
+        Opportunity Score = Demand / log₁₀(Supply + 10)
+        
+        Why this works:
+        - Demand: 0-100 (viability_score or interest_score)
+        - Supply: Log-scaled to compress huge ranges
+        - Result: Interpretable scores typically 5-50+
+        
+        Examples:
+        65 demand, 100 supply   → 65/2.0 = 32.5 (STRONG)
+        65 demand, 1,000 supply → 65/3.0 = 21.7 (Good)
+        65 demand, 10,000 supply → 65/4.0 = 16.3 (Risky)
+        
+        Log scale breakdown:
+        10 sellers    → log₁₀(20) = 1.3  (Blue Ocean)
+        100 sellers   → log₁₀(110) = 2.0 (Low competition)
+        1,000 sellers → log₁₀(1010) = 3.0 (Moderate)
+        10,000 sellers → log₁₀(10010) = 4.0 (Saturated)
         """
         if supply < 0 or demand <= 0:
             return 0.0
-
-        score = demand / (supply + 1)
-        return round(score, 4)
+        
+        import math
+        
+        # Log₁₀ with +10 offset to prevent log(0) and set baseline
+        # supply + 10 ensures even 0 supply gets log₁₀(10) = 1.0
+        score = demand / math.log10(supply + 10)
+        return round(score, 2)  # Changed from 4 decimals to 2 for readability
 
     # ------------------------------------------------------------------
     # Core pipeline step
@@ -100,17 +116,16 @@ class OpportunityAnalyzer:
         df["market_status"] = df.apply(classify_market, axis=1)
 
         def get_recommendation(row):
-            # Verificamos que la columna exista por seguridad
             score = row.get("opportunity_score", 0)
             
             if row.get("is_rising") is False:
                 return "Avoid ❌ (Stagnant)"
-
-            if score > 1.0:
+            
+            if score > 25:
                 return "STRONG BUY 🚀"
-            elif score > 0.5:
+            elif score > 15:
                 return "Consider 💡"
-            elif score > 0.1:
+            elif score > 10:
                 return "Risky ⚠️"
             else:
                 return "Avoid ❌ (Saturated)"
