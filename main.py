@@ -1,7 +1,7 @@
 import sys
 import argparse
 import pandas as pd
-from typing import List
+from typing import List, Dict
 
 from rich.console import Console
 from rich.panel import Panel
@@ -25,6 +25,12 @@ console = Console()
 class TrendArbitrageEngine:
     """
     Main orchestrator for the TrendArbitrage system.
+    
+    Pipeline:
+    1. Detect trends (Google Trends + Shopping data)
+    2. Scrape supply (Amazon, eBay, etc.)
+    3. Calculate opportunity scores (0-100)
+    4. Generate reports with detailed verdicts
     """
 
     def __init__(self, config_path: str = "config/config.yaml"):
@@ -36,7 +42,7 @@ class TrendArbitrageEngine:
         trends_config = self.config.get("trends", {})
         self.trend_detector = TrendDetector(
             geo=trends_config.get("geo", "US"),
-            timeframe="today 3-m",
+            timeframe="today 12-m",  # Siempre 12 meses para análisis temporal
         )
 
         scraping_config = self.config.get("scraping", {})
@@ -58,11 +64,27 @@ class TrendArbitrageEngine:
             )
         )
 
-    def run_pipeline(self, keywords: List[str] = None, use_trending: bool = False) -> pd.DataFrame:
+    def run_pipeline(
+        self, 
+        keywords: List[str] = None, 
+        use_trending: bool = False,
+        temporal_analysis: bool = False
+    ) -> pd.DataFrame:
         """
         Ejecuta el flujo completo: Detección -> Extracción -> Análisis.
+        
+        Args:
+            keywords: Lista de keywords a analizar
+            use_trending: Si True, usa trending searches de Google
+            temporal_analysis: Si True, genera análisis temporal (7d, 1m, 3m, 6m, 12m)
+        
+        Returns:
+            DataFrame con opportunity scores y verdicts
         """
-        # 1. Obtener Keywords (si no se proporcionan, buscar tendencias o usar default)
+        
+        # ==========================================
+        # PASO 1: Obtener Keywords
+        # ==========================================
         if not keywords:
             if use_trending:
                 console.print("[bold blue]Fetching trending searches...[/bold blue]")
@@ -74,7 +96,9 @@ class TrendArbitrageEngine:
             console.print("[red]No keywords found to analyze.[/red]")
             return pd.DataFrame()
 
-        # 2. Fase de Detección de Demanda (Genera la columna 'history')
+        # ==========================================
+        # PASO 2: Análisis de Demanda (Trends + Shopping)
+        # ==========================================
         console.print(f"[bold green]Analyzing demand for: {', '.join(keywords)}[/bold green]")
         interest_df = self.trend_detector.get_interest_over_time(keywords)
         
@@ -82,23 +106,64 @@ class TrendArbitrageEngine:
             console.print("[yellow]No trend data available for these keywords.[/yellow]")
             return pd.DataFrame()
 
-        # 3. Fase de Verificación de Suministro (Marketplace Scraper)
+        console.print(f"[green]✓ Demand data collected for {len(interest_df)} keywords[/green]")
+
+        # ==========================================
+        # PASO 3: Verificación de Suministro (Marketplaces)
+        # ==========================================
         console.print("[bold green]Checking marketplace supply...[/bold green]")
         supply_data = []
+        
         for kw in interest_df["keyword"]:
-            # Obtenemos métricas de Amazon y eBay
             metrics = self.scraper.get_supply_metrics(kw)
             supply_data.append(metrics)
         
         supply_df = pd.DataFrame(supply_data)
 
-        # Unimos los datos de interés (que trae 'history') con los de suministro
+        # ==========================================
+        # PASO 4: Unir Datos
+        # ==========================================
         combined_df = pd.merge(interest_df, supply_df, on="keyword")
+        
+        console.print(f"[green]✓ Combined demand + supply data for {len(combined_df)} keywords[/green]")
 
-        # Ahora el analyzer calculará el score y generará el reporte
+        # ==========================================
+        # PASO 5: Calcular Opportunity Scores
+        # ==========================================
+        console.print("[bold blue]Calculating opportunity scores...[/bold blue]")
         report_df = self.analyzer.generate_report(combined_df)
 
-        # 6. Guardar y Retornar
+        # ==========================================
+        # PASO 6: Análisis Temporal (Opcional)
+        # ==========================================
+        if temporal_analysis and not report_df.empty:
+            console.print("[bold blue]Generating temporal analysis (7d, 1m, 3m, 6m, 12m)...[/bold blue]")
+            
+            temporal_reports = []
+            
+            for _, row in report_df.iterrows():
+                temporal_scores = self.analyzer.calculate_temporal_scores(
+                    keyword=row["keyword"],
+                    history=row.get("history", []),
+                    purchase_intent=row["purchase_intent_score"],
+                    conversion_rate=row.get("estimated_conversion_rate", 0.01),
+                    avg_price=row["avg_price"],
+                    total_supply=row["total_supply"],
+                    baseline_monthly_searches=row["monthly_searches"],
+                )
+                
+                temporal_reports.append({
+                    "keyword": row["keyword"],
+                    "temporal_scores": temporal_scores,
+                })
+            
+            # Guardar análisis temporal
+            temporal_path = self.config.get("output", {}).get("temporal_path", "data/output/temporal_analysis.csv")
+            self._save_temporal_analysis(temporal_reports, temporal_path)
+
+        # ==========================================
+        # PASO 7: Guardar y Retornar
+        # ==========================================
         if not report_df.empty:
             output_path = self.config.get("output", {}).get("csv_path", "data/output/report.csv")
             self.analyzer.save_report(report_df, output_path)
@@ -113,7 +178,29 @@ class TrendArbitrageEngine:
         return report_df
 
     def _get_default_keywords(self) -> List[str]:
-        return ["board games"]
+        """Keywords por defecto si no se proporcionan."""
+        return ["bluetooth headphones"]
+
+    def _save_temporal_analysis(self, temporal_reports: List[Dict], filepath: str):
+        """Guarda análisis temporal en formato legible."""
+        rows = []
+        
+        for report in temporal_reports:
+            keyword = report["keyword"]
+            for period, data in report["temporal_scores"].items():
+                rows.append({
+                    "keyword": keyword,
+                    "period": period,
+                    "score": data["score"],
+                    "potential_revenue": data["potential_monthly_revenue"],
+                    "competition_level": data["competition_level"],
+                    "trend_velocity": data["trend_velocity"],
+                    "data_points": data["data_points"],
+                })
+        
+        df = pd.DataFrame(rows)
+        df.to_csv(filepath, index=False)
+        console.print(f"[green]✓ Temporal analysis saved to {filepath}[/green]")
 
 
 def parse_arguments():
@@ -121,9 +208,27 @@ def parse_arguments():
         description="TrendArbitrage: Discover profitable dropshipping niches"
     )
 
-    parser.add_argument("--keywords", type=str)
-    parser.add_argument("--trending", action="store_true")
-    parser.add_argument("--config", type=str, default="config/config.yaml")
+    parser.add_argument(
+        "--keywords", 
+        type=str,
+        help="Comma-separated keywords to analyze (e.g., 'phone case,yoga mat')"
+    )
+    parser.add_argument(
+        "--trending", 
+        action="store_true",
+        help="Use today's trending searches from Google"
+    )
+    parser.add_argument(
+        "--temporal", 
+        action="store_true",
+        help="Generate temporal analysis (7d, 1m, 3m, 6m, 12m)"
+    )
+    parser.add_argument(
+        "--config", 
+        type=str, 
+        default="config/config.yaml",
+        help="Path to config file"
+    )
 
     return parser.parse_args()
 
@@ -140,10 +245,21 @@ def main():
             [kw.strip() for kw in args.keywords.split(",")] if args.keywords else None
         )
 
-        report_df = engine.run_pipeline(keywords=keywords, use_trending=args.trending)
+        report_df = engine.run_pipeline(
+            keywords=keywords, 
+            use_trending=args.trending,
+            temporal_analysis=args.temporal
+        )
 
         if not report_df.empty:
             print_results_summary(report_df, top_n=3)
+            
+            # Imprimir verdicts detallados
+            console.print("\n[bold cyan]═══ DETAILED VERDICTS ═══[/bold cyan]\n")
+            for idx, row in report_df.head(3).iterrows():
+                console.print(f"[bold]{row['rank']}. {row['keyword']}[/bold]")
+                console.print(row['verdict'])
+                console.print("")
         else:
             console.print("[yellow]No viable opportunities found[/yellow]")
 
