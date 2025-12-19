@@ -1,405 +1,346 @@
-# TrendArbitrage: Dropshipping Niche Discovery Engine
+# TrendArbitrage
 
-Find profitable products before markets saturate. Automated demand analysis + supply scraping = actionable opportunities.
-
----
-
-## The Problem
-
-Dropshippers need to find products with high demand and low competition. Manually, this takes hours of:
-- Checking Google Trends for rising interest
-- Searching Amazon/eBay/Walmart for existing sellers
-- Calculating if the opportunity is real
-
-By the time you finish, someone else has already moved.
+**Automated dropshipping niche discovery engine.** Identifies profitable products by analyzing demand trends and marketplace supply saturation.
 
 ---
 
-## The Solution
+## How It Works
 
-This system automates the entire process:
-
-1. **Fetch trend data** from Google Trends (via SerpApi)
-2. **Calculate demand metrics** (strength + growth momentum)
-3. **Scrape supply data** from 4 major marketplaces
-4. **Score opportunities** using logarithmic scaling
-5. **Generate reports** ranked by viability
-
-Results in minutes and not hours.
-
----
-
-## How It Works: The Math
-
-### The Formula
+### Pipeline Overview
 
 ```
-Opportunity Score = Viability Score / log(1 + Total Supply)
-
-Where: Viability Score = Demand Strength × (1 + Growth Momentum)
+1. Trend Detection (Google Trends + Shopping)
+   ↓
+2. Supply Scraping (Amazon, eBay via SerpAPI)
+   ↓
+3. Opportunity Scoring (0-100 economic viability)
+   ↓
+4. Report Generation (CSV + detailed verdicts)
 ```
 
-### Breaking It Down
+---
 
-**1. Demand Strength** (absolute, not comparative)
+## Core Metrics Explained
+
+### 1. **Opportunity Score (0-100)**
+
+Economic viability metric combining demand, competition, and momentum.
+
+**Formula:**
+```
+Demand Monetized = monthly_searches × conversion_rate × avg_price
+Supply Pressure = log₁₀(total_supply + 10)
+
+Base Score (0-60) = Demand Monetized / Supply Pressure / 100
++ Purchase Intent Bonus (0-20)
++ Momentum Bonus (0-20)
+- Saturation Penalty (0-30)
+= Final Score (0-100)
+```
+
+**Score Ranges:**
+- **80-100**: Gold mine. High demand, low competition. Act fast.
+- **60-79**: Solid opportunity. Viable with good execution.
+- **40-59**: Risky. Requires expertise and differentiation.
+- **0-39**: Avoid. Poor demand/supply ratio.
+
+**Example (Yoga Mat):**
+```
+Monthly searches: 7,200
+Conversion rate: 2.5% (from purchase intent)
+Avg price: $49.00
+→ Demand Monetized: $8,842/month
+
+Total supply: 29,579 listings
+→ Supply Pressure: log₁₀(29,579) = 4.47
+
+Base Score: 8,842 / 4.47 / 100 = 19.8
++ Intent Bonus: +12.0 (60/100 purchase intent)
++ Momentum: +5.0 (velocity: 0.09)
+- Saturation Penalty: -30.0 (>10k listings)
+= Final Score: 6.8/100 ❌
+```
+
+---
+
+### 2. **Monthly Searches**
+
+Estimated real search volume derived from Google Trends relative interest.
+
+**Scaling Method:**
 ```python
-Demand Strength = Average Interest Over Time (0-100)
+# Google Trends returns 0-100 relative interest
+# We scale to absolute monthly searches:
+monthly_searches = (interest_score / 100) × 10,000
+
+# Examples:
+# Interest 100 → 10,000 searches/month
+# Interest 50  → 5,000 searches/month
+# Interest 10  → 1,000 searches/month
 ```
-- Not peak interest and not relative to other keywords
-- Just the mean from Google Trends time-series
-- 80+ = strong demand, 40-80 = moderate, <40 = weak
 
-**2. Growth Momentum** (continuous rate)
-```python
-Momentum = (Recent Average - Early Average) / Early Average
-Floored at 0 (to avoid negative values)
-```
-- Compares last 25% of timeline vs first 25%
-- 0.0 = flat, 0.3 = +30% growth, 1.0+ = explosive
-- Declining trends get 0 (no boost, no penalty)
-
-**3. Viability Score** (demand × momentum)
-```python
-Viability = Demand × (1 + Momentum)
-```
-- Growth amplifies demand instead of replacing it
-- Example: 45 demand × (1 + 1.2 momentum) = 99 viability
-
-**4. Supply Normalization** (log-scaled)
-```python
-log(1 + Total Supply)
-```
-- 100 → 1,000 listings: big difference
-- 10,000 → 20,000 listings: doesn't matter as much
-- Prevents massive markets from crushing scores
-
-### Why This Works
-
-**Each product is evaluated independently.** An interest score of 82 for "vitamin c" doesn't mean it's "better" than 78 for "clash royale plush" — they're different markets. This formula works for any product category without comparison.
-
-**Growth matters as much as absolute demand.** A product with moderate interest but explosive growth (viral potential) can score higher than high-interest flatliners.
-
-**Log-scaling reflects market reality.** The competitive difference between 100 and 1,000 sellers is huge. Between 10,000 and 20,000? You're already lost in the noise.
+**Source:** SerpAPI Google Trends (12-month historical data)
 
 ---
 
-## Example: Clash Royale Plush (January 2024)
+### 3. **Purchase Intent Score (0-100)**
 
-**Timeline (12 weeks):**
-```
-[35, 38, 42, 48, 55, 60, 68, 72, 78, 80, 82, 80]
-```
+Measures commercial intent based on marketplace activity.
 
-**Calculations:**
-```
-Demand Strength = mean(timeline) = 64.0
+**Components:**
+- **Shopping Results Available (0-40 pts):** Products listed on Google Shopping
+- **Average Price Exists (0-30 pts):** Active market with pricing data
+- **Product Variety (0-30 pts):** Multiple sellers indicate healthy competition
 
-Early Average = mean([35, 38, 42]) = 38.3
-Recent Average = mean([82, 80]) = 81.0
-Momentum = (81.0 - 38.3) / 38.3 = 1.11 (+111% growth)
+**Interpretation:**
+- **70-100**: Transactional keywords (people ready to buy)
+- **40-70**: Mixed intent (research + buying)
+- **0-40**: Informational (low purchase likelihood)
 
-Viability = 64.0 × (1 + 1.11) = 135.0
-
-Supply = 57 total (Amazon: 18, eBay: 24, Walmart: 3, AliExpress: 12)
-
-Opportunity = 135.0 / log(58) = 135.0 / 4.06 = 33.3
-```
-
-**Result:** Score of 33.3 → **STRONG BUY 🚀**
-
-Why? Explosive growth (+111%), moderate baseline demand, and critically underserved market.
+**Source:** SerpAPI Google Shopping API
 
 ---
 
-## Score Interpretation
+### 4. **Estimated Conversion Rate**
 
-| Score  | Status              | Action                     |
-|--------|---------------------|----------------------------|
-| < 1    | Oversaturated       | Skip                       |
-| 1-5    | Viable but crowded  | Test small                 |
-| 5-15   | Strong opportunity  | Research suppliers now     |
-| 15+    | Rare breakout       | Act immediately            |
+Predicted purchase rate based on purchase intent signals.
+
+**Benchmarks:**
+```
+Purchase Intent 70-100  → 3.0% conversion (transactional)
+Purchase Intent 50-70   → 2.5% conversion (medium intent)
+Purchase Intent 30-50   → 1.5% conversion (research phase)
+Purchase Intent 0-30    → 1.0% conversion (informational)
+```
+
+These rates reflect dropshipping industry standards (1-3%).
 
 ---
 
-## Tech Stack
+### 5. **Potential Monthly Revenue**
 
-### Core Dependencies
-
-| Library          | Purpose                              | Why This Choice?                               |
-|------------------|--------------------------------------|------------------------------------------------|
-| `SerpApi`        | Google Trends data extraction        | No rate limits, handles anti-bot, returns JSON |
-| `requests`       | HTTP client                          | Simple, reliable, industry standard            |
-| `pandas`         | Data manipulation                    | Essential for data science workflows           |
-| `numpy`          | Mathematical operations              | Log scaling, averages, momentum calculations   |
-| `rich`           | Terminal UI                          | Beautiful console output with tables           |
-
-### Why SerpApi Over PyTrends?
-
-| Feature            | PyTrends (Free)          | SerpApi (Paid)                |
-|--------------------|--------------------------|-------------------------------|
-| Rate Limits        | ⚠️ ~100 req/hour         | ✅ 5,000 req/month ($50 plan) |
-| IP Bans            | ❌ Common                | ✅ Never                      |
-| CAPTCHAs           | ❌ Blocks scraper        | ✅ Handled automatically      |
-| Data Quality       | ✅ Direct from Google    | ✅ Direct from Google         |
-| Maintenance        | ⚠️ Breaks often          | ✅ Stable API                 |
-
-**For production use:** SerpApi is worth the cost. For academic demos: PyTrends works but expect rate limit errors.
-
-### Modular Design Philosophy
+Theoretical revenue if capturing market share.
 
 ```
-TrendArbitrageEngine
-│
-├── TrendDetector (src/trend_detector.py)
-│   • Uses SerpApi to fetch Google Trends data
-│   • Computes demand strength (mean interest)
-│   • Computes growth momentum (recent vs early)
-│   • Calculates viability score
-│
-├── MarketplaceScraper (src/marketplace_scraper.py)
-│   • Scrapes Amazon, eBay, Walmart, AliExpress
-│   • Uses requests + BeautifulSoup
-│   • User-Agent rotation for bot avoidance
-│   • Retry logic with delays
-│
-├── OpportunityAnalyzer (src/opportunity_analyzer.py)
-│   • Merges demand + supply data
-│   • Calculates opportunity scores (log-scaled)
-│   • Classifies and ranks products
-│   • Generates CSV reports
-│
-└── Utils (src/utils.py)
-    • Config loading (YAML)
-    • Logging setup
-    • Terminal output (Rich)
+Revenue = monthly_searches × conversion_rate × avg_price
+
+Example (Yoga Mat):
+7,200 searches × 0.025 conversion × $49.00 = $8,842/month
+```
+
+This assumes you convert at the estimated rate. Actual revenue depends on:
+- Product quality and differentiation
+- Marketing effectiveness
+- Pricing strategy
+- Competition positioning
+
+---
+
+### 6. **Competition Level**
+
+Supply saturation classification based on total marketplace listings.
+
+**Levels:**
+- **BLUE OCEAN 🌊** (<100 listings): Untapped market
+- **LOW 🟢** (100-499): Minimal competition
+- **MODERATE 🟡** (500-1,999): Healthy competition
+- **HIGH 🟠** (2,000-9,999): Saturated market
+- **EXTREME 🔴** (10,000+): Highly saturated
+
+**Source:** SerpAPI Amazon + eBay product search results
+
+---
+
+### 7. **Supply Pressure**
+
+Logarithmic competition metric reflecting diminishing competitive impact at scale.
+
+```
+Supply Pressure = log₁₀(total_supply + 10)
+
+Examples:
+100 listings   → log₁₀(110) = 2.04
+1,000 listings → log₁₀(1,010) = 3.00
+10,000 listings → log₁₀(10,010) = 4.00
+```
+
+**Why logarithmic?**
+The competitive difference between 100 and 1,000 sellers is massive (you're buried on page 10). Between 10,000 and 20,000, you're equally invisible—the impact plateaus.
+
+---
+
+### 8. **Trend Velocity**
+
+Growth momentum calculated as slope of interest over time.
+
+```
+velocity = trend_slope(interest_values_over_12_months)
+
+Interpretation:
+velocity > 1.0  → Rapid growth (viral potential)
+velocity > 0.5  → Steady growth
+velocity > 0    → Slow growth
+velocity ≤ 0    → Declining interest
+```
+
+**Momentum Bonus:**
+- **+20 pts**: velocity > 1.0 (explosive growth)
+- **+10 pts**: velocity > 0.5 (healthy growth)
+- **+5 pts**: velocity > 0 (slight growth)
+
+---
+
+### 9. **Demand/Supply Ratio**
+
+Direct ratio showing monetized demand per competitor.
+
+```
+Ratio = potential_monthly_revenue / (total_supply + 1)
+
+Example (Yoga Mat):
+$8,842 / 29,580 = 0.299
+
+Interpretation:
+> 1.0   → Excellent (demand exceeds supply significantly)
+0.5-1.0 → Good (balanced market)
+0.1-0.5 → Poor (oversaturated)
+< 0.1   → Critical (avoid)
 ```
 
 ---
 
-## Installation
+### 10. **Score Breakdown**
 
-### Prerequisites
-- Python 3.8+
-- SerpApi account ([serpapi.com](https://serpapi.com))
+Transparent decomposition of how the final score was calculated.
 
-### Setup
+**Components:**
+- **Base Score (0-60):** Core demand/supply economics
+- **Intent Bonus (0-20):** Purchase readiness adjustment
+- **Momentum Bonus (0-20):** Growth trend reward
+- **Saturation Penalty (0-30):** Competition penalty
 
-```bash
-# Clone repo
-git clone https://github.com/yourusername/TrendArbitrage.git
-cd TrendArbitrage
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Add SerpApi key
-echo "SERPAPI_KEY=your_key_here" > .env
-
-# Run
-python main.py
+**Example (Yoga Mat):**
 ```
-### API Key Configuration (CRITICAL)
-
-The system requires a **SerpApi** key to fetch Google Trends and marketplace data without being blocked.
-
-1. Create a `.env` file in the project root. Use `touch .env` to create it.
-2. Add your key:
-
-```env
-SERPAPI_KEY=your_secret_key_here_12345
+Base Score: 19.8/60 🔴  (weak fundamentals)
+Intent Bonus: +12.0     (moderate buying intent)
+Momentum: +5.0          (slight growth)
+Saturation Penalty: -30.0 🔴 (extreme competition)
+─────────────────────
+Final Score: 6.8/100 ❌
 ```
 
+---
 
-### Configuration
+## Output Interpretation
 
-Edit `config/config.yaml`:
+### Summary Table
 
-```yaml
-trends:
-  geo: "US"              # Country code
-  timeframe: "today 3-m" # Analysis window
-
-scraping:
-  delay_between_requests: 3
-  max_retries: 3
-  
-scoring:
-  min_demand_threshold: 20
-  top_n_results: 10
 ```
+┏━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Rank ┃ Keyword   ┃  Score ┃ Revenue/Mo ┃ Searches/Mo┃ Competition  ┃ Status     ┃
+┃  1   ┃ yoga mat  ┃   6.8  ┃   $8,842   ┃    7,200   ┃ EXTREME 🔴   ┃ ❌ EVITAR  ┃
+```
+
+**Key insights:**
+- **Score 6.8/100:** Economically unviable
+- **Revenue $8,842/month:** Decent demand exists
+- **29,579 listings:** Market is oversaturated (supply pressure 4.47)
+- **Ratio 0.299:** Each competitor gets ~$0.30 revenue—unsustainable
+
+---
+
+### Detailed Verdict
+
+The verdict explains mathematically why a product scores high or low.
+
+**For Low Scores (0-39):**
+```
+❌ EVITAR (6.8/100)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Potencial mensual: $8,842
+Competencia: 29,579 ofertas
+Ratio D/O: 0.299 (PÉSIMO)
+
+💀 Problema crítico: Extrema saturación (29,579 ofertas)
+   Supply pressure = log₁₀(29,579) = 4.47
+   → Divides tu revenue entre 4.47
+
+→ Pérdida de tiempo y dinero garantizada.
+```
+
+**Key diagnosis:**
+- Problem identified: Extreme saturation
+- Mathematical explanation: High supply pressure (4.47) crushes the revenue potential
+- Verdict: Avoid—poor unit economics
+
+---
+
+## Temporal Analysis
+
+Running with `--temporal` flag generates multi-timeframe analysis (7d, 1m, 3m, 6m, 12m).
+
+**Purpose:**
+- Validate consistency: Is growth sustainable or a temporary spike?
+- Identify emerging trends: Did velocity increase recently?
+- Risk assessment: Longer timeframes reduce noise
+
+**Output:** `data/output/temporal_analysis.csv`
+
+```csv
+keyword,period,score,potential_revenue,competition_level,trend_velocity,data_points
+yoga mat,7d,8.2,8842,EXTREME 🔴,0.15,7
+yoga mat,1m,7.5,8842,EXTREME 🔴,0.12,30
+yoga mat,3m,6.8,8842,EXTREME 🔴,0.09,90
+```
+
+**Interpretation:** Score decreases with more data (velocity slows), confirming it's not an emerging opportunity.
 
 ---
 
 ## Usage
 
-### Analyze Custom Keywords
-
 ```bash
-python main.py --keywords "pokemon plush,bluey toys,squishmallow"
-```
+# Basic analysis
+python main.py --keywords "phone case,yoga mat"
 
-### Use Today's Trending Searches
-
-```bash
+# Use trending searches
 python main.py --trending
-```
 
-This fetches Google's real-time trending searches and analyzes them.
-
-### Output
-
-Terminal display:
-```
-┏━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━┓
-┃ Rank┃ Keyword          ┃ Demand ┃ Momentum┃ Supply ┃ Opp. Score ┃
-┡━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━┩
-│   1 │ pokemon plush    │   82   │  +1.23  │    45  │    33.8    │
-│   2 │ bluey toys       │   71   │  +0.45  │   120  │    21.4    │
-└─────┴──────────────────┴────────┴─────────┴────────┴────────────┘
-```
-
-CSV report: `data/output/opportunities_TIMESTAMP.csv`
-
----
-
-## Project Structure
-
-```
-TrendArbitrage/
-├── src/
-│   ├── trend_detector.py          # SerpApi integration + demand analysis
-│   ├── marketplace_scraper.py     # Multi-platform scraping
-│   ├── opportunity_analyzer.py    # Scoring engine
-│   └── utils.py                   # Helpers
-│
-├── config/
-│   └── config.yaml                # Settings
-│
-├── data/
-│   └── output/                    # Generated reports
-│
-├── notebooks/
-│   ├── 01_exploration.py          # Data analysis
-│   └── 02_validation.py           # Backtesting
-│
-├── .env                           # SERPAPI_KEY=xxx
-├── main.py                        # Entry point
-├── requirements.txt               # Dependencies
-└── README.md
+# Generate temporal analysis
+python main.py --keywords "bluetooth headphones" --temporal
 ```
 
 ---
 
-## Why This Formula Is Better
+## Data Sources
 
-### Old Approach: `Interest / Supply`
+| Metric | Source | API |
+|--------|--------|-----|
+| Interest trends | Google Trends | SerpAPI |
+| Purchase intent | Google Shopping | SerpAPI |
+| Supply counts | Amazon, eBay | SerpAPI |
 
-**Problems:**
-1. Cross-keyword comparisons (meaningless)
-2. Supply dominates (scores → 0 for large markets)
-3. Ignores growth trends
-
-**Example failure:**
-```
-Product A: Interest=80, Supply=10,000
-Score = 80/10,000 = 0.008 (crushed)
-
-Product B: Interest=40, declining trend, Supply=50
-Score = 40/50 = 0.8 (looks viable but trend is dying)
-```
-
-### New Approach: `Viability / log(Supply)`
-
-**Fixes:**
-1. Absolute evaluation (no comparisons)
-2. Log-scaling prevents supply crushing
-3. Momentum catches declining trends
-
-**Same examples:**
-```
-Product A: Viability=92, Supply=10,000
-Score = 92/log(10,001) = 92/9.2 = 10.0 (viable!)
-
-Product B: Viability=40×(1+0)=40, Supply=50
-Score = 40/log(51) = 40/3.9 = 10.3
-BUT: Momentum=0 → Flagged as "Stagnant" → Avoid ❌
-```
+All scraping handled by SerpAPI to avoid bot detection.
 
 ---
 
 ## Limitations
 
-**Technical:**
-- SerpApi costs money ($50/month for serious use)
-- Marketplace scrapers can break if sites change HTML structure
-- Supply counts are approximate (dynamic content)
+1. **Estimated conversion rates:** Industry benchmarks, not product-specific
+2. **Search volume scaling:** Relative interest scaled to 10k baseline (not absolute Google data)
+3. **Price averages:** From top 20 Shopping results (may not reflect full market)
+4. **Competition:** Counts all listings (doesn't assess quality/ranking)
 
-**Ethical:**
-- Web scraping legality varies by jurisdiction
-- Respects robots.txt (implemented)
-- Only scrapes public data
-- Educational project — review local laws for commercial use
+**Recommendation:** Use scores as initial screening. Validate top opportunities with manual research before committing capital.
 
 ---
 
-## Future Ideas
+## Key Takeaways
 
-- Social media trend detection (TikTok/Instagram)
-- Price analysis for profit margin estimation
-- Email alerts for high-scoring opportunities
-- Historical tracking for pattern recognition
-- Streamlit dashboard for interactive exploration
+- **Opportunity Score combines economics + momentum** into a single 0-100 metric
+- **Log-scaled supply** reflects real competitive dynamics (10k vs 20k listings has minimal impact difference)
+- **Verdicts explain WHY** a score is high/low using the underlying math
+- **Temporal analysis** validates consistency and filters noise
+- **Not a guarantee:** A score of 80 means strong fundamentals, not guaranteed profit
 
----
-
-## Real Use Case
-
-An entrepreneur used this exact approach during the Clash Royale resurgence:
-
-1. System flagged "clash royale plush" (Score: 33.3)
-2. Found AliExpress supplier at $3.50/unit
-3. Listed on Shopify at $19.99
-4. Created viral TikTok video (2M views)
-5. 128 sales in 6 weeks = ~$2,100 profit
-
-By week 7, competitors flooded in. First-mover advantage captured the market.
-
----
-
-## Contributing
-
-Fork, improve, submit PRs. This is a portfolio project but contributions are welcome.
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE)
-
----
-
-**If this helped you, star the repo.**
-
----
-
-## FAQ
-
-**Q: Why not just use free PyTrends?**  
-A: Rate limits and IP bans make it unreliable for production. SerpApi costs money but actually works.
-
-**Q: What if momentum is negative?**  
-A: It floors at 0. Declining products get no growth boost and are flagged as "Stagnant."
-
-**Q: Why log-scale supply?**  
-A: Market saturation isn't linear. 100→1,000 competitors changes everything. 10,000→20,000 changes nothing.
-
-**Q: Is this legal?**  
-A: Scraping public data for research is generally legal. Commercial use requires legal review for your jurisdiction.
-
-**Q: How accurate are supply counts?**  
-A: Approximate but directionally correct. Good enough for opportunity ranking.
+Use this tool to filter noise and focus manual research on high-potential niches.
