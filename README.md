@@ -1,509 +1,405 @@
-# TrendArbitrage: AI-Powered Dropshipping Niche Discovery Engine
+# TrendArbitrage: Dropshipping Niche Discovery Engine
 
-> *"Find what's trending before the market floods. Digital arbitrage at scale."*
-
-A Data Science portfolio project that automatically identifies high-demand, low-supply product opportunities for dropshipping businesses by combining Google Trends analysis with marketplace scraping.
+Find profitable products before markets saturate. Automated demand analysis + supply scraping = actionable opportunities.
 
 ---
 
-### The Dropshipping Challenge
+## The Problem
 
-Dropshippers face a critical problem: **finding products that sell before everyone else does**.
+Dropshippers need to find products with high demand and low competition. Manually, this takes hours of:
+- Checking Google Trends for rising interest
+- Searching Amazon/eBay/Walmart for existing sellers
+- Calculating if the opportunity is real
 
-**Example:** When *Clash Royale* went viral, one entrepreneur made $50K+ by:
-1. Identifying high search volume for "Clash Royale plush"
-2. Noticing only ~30 sellers existed on major platforms
-3. Finding suppliers on AliExpress
-4. Creating viral TikTok videos driving traffic to his Shopify store
-
-By the time competitors caught on 6 weeks later, he'd captured the market.
-
-### The Solution: Digital Arbitrage Engine
-
-This project **automates that discovery process** by:
-- Monitoring **Google Trends** for rising search interest (DEMAND)
-- Scraping **eBay/Amazon** for product availability (SUPPLY)
-- Calculating an **Opportunity Score** to rank products
-- Generating actionable reports in minutes instead of hours
+By the time you finish, someone else has already moved.
 
 ---
 
-## The Algorithm: How Digital Arbitrage Identifies Profitable Products
-1. Signal Detection (The Trend): Scrape specific hashtags like #tiktokmademebuyit, #viral, or rising queries from Google Trends to find "keywords" (e.g., "Clash Royale Plush").
+## The Solution
 
-2. Demand Velocity (The Validation): Check Google Trends for that keyword. Is the line going up vertically?
+This system automates the entire process:
 
-3. Supply Scarcity (The Opportunity): Search that keyword on Amazon/eBay/AliExpress.
-    * Bad Signal: 10,000+ results (Oversaturated).
-    * Good Signal: < 50 results (Underserved Market).
+1. **Fetch trend data** from Google Trends (via SerpApi)
+2. **Calculate demand metrics** (strength + growth momentum)
+3. **Scrape supply data** from 4 major marketplaces
+4. **Score opportunities** using logarithmic scaling
+5. **Generate reports** ranked by viability
 
-4. The "Alpha": High Search Volume + Low Product Count = Profitable Niche.
+Results in minutes and not hours.
 
-### Three-Phase Detection System
+---
+
+## How It Works: The Math
+
+### The Formula
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 1: TREND EXTRACTION (Demand Discovery)               │
-│  ↓                                                           │
-│  • Fetch trending searches from Google Trends               │
-│  • Measure search interest (0-100 scale)                    │
-│  • Detect velocity: Is interest RISING?                     │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 2: INTEREST VALIDATION (Velocity Check)              │
-│  ↓                                                           │
-│  • Compare recent interest vs historical baseline           │
-│  • Filter: Must be rising trend (50%+ increase)             │
-│  • Filter: Minimum interest threshold (>20/100)             │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│  Phase 3: SATURATION CHECK (Supply Scarcity)                │
-│  ↓                                                           │
-│  • Scrape eBay/Amazon for "Total Results"                   │
-│  • Count existing products                                  │
-│  • Flag: <50 products = Underserved ⭐                     │
-│  • Flag: >500 products = Oversaturated ❌                  │
-└─────────────────────────────────────────────────────────────┘
-                          ↓
-┌─────────────────────────────────────────────────────────────┐
-│  OPPORTUNITY SCORE CALCULATION                              │
-│                                                              │
-│     Opportunity Score = Interest / (Supply + 1)             │
-│                                                              │
-│  High Score = High Demand + Low Supply = 💰                │
-└─────────────────────────────────────────────────────────────┘
+Opportunity Score = Viability Score / log(1 + Total Supply)
+
+Where: Viability Score = Demand Strength × (1 + Growth Momentum)
 ```
 
-### The Math Behind Opportunity Score
+### Breaking It Down
 
-The Opportunity Score is a crucial metric that helps dropshippers identify profitable niches by quantifying the relationship between demand and supply.
-
-**Formula:**
+**1. Demand Strength** (absolute, not comparative)
 ```python
-Opportunity Score = Search Interest / (Total Supply + 1)
+Demand Strength = Average Interest Over Time (0-100)
 ```
+- Not peak interest and not relative to other keywords
+- Just the mean from Google Trends time-series
+- 80+ = strong demand, 40-80 = moderate, <40 = weak
 
-**Why this works:**
-- **Numerator (Interest):** Measures market demand
-- **Denominator (Supply):** Measures competition
-- **Result:** Demand density per competitor
-
-**Real Examples:**
-
-| Product               | Interest | Supply | Score  | Verdict         |
-|-----------------------|----------|--------|--------|-----------------|
-| Clash Royale Plush    | 75       | 45     | 1.63   | 🚀 STRONG BUY   |
-| Generic Toy           | 30       | 5000   | 0.006  | ❌ Oversaturated|
-| Digital Circus Plush  | 85       | 120    | 0.70   | 💡 Consider     |
-
+**2. Growth Momentum** (continuous rate)
 ```python
-Opportunity Score = Search Interest / (Total Supply + 1)
+Momentum = (Recent Average - Early Average) / Early Average
+Floored at 0 (to avoid negative values)
+```
+- Compares last 25% of timeline vs first 25%
+- 0.0 = flat, 0.3 = +30% growth, 1.0+ = explosive
+- Declining trends get 0 (no boost, no penalty)
+
+**3. Viability Score** (demand × momentum)
+```python
+Viability = Demand × (1 + Momentum)
+```
+- Growth amplifies demand instead of replacing it
+- Example: 45 demand × (1 + 1.2 momentum) = 99 viability
+
+**4. Supply Normalization** (log-scaled)
+```python
+log(1 + Total Supply)
+```
+- 100 → 1,000 listings: big difference
+- 10,000 → 20,000 listings: doesn't matter as much
+- Prevents massive markets from crushing scores
+
+### Why This Works
+
+**Each product is evaluated independently.** An interest score of 82 for "vitamin c" doesn't mean it's "better" than 78 for "clash royale plush" — they're different markets. This formula works for any product category without comparison.
+
+**Growth matters as much as absolute demand.** A product with moderate interest but explosive growth (viral potential) can score higher than high-interest flatliners.
+
+**Log-scaling reflects market reality.** The competitive difference between 100 and 1,000 sellers is huge. Between 10,000 and 20,000? You're already lost in the noise.
+
+---
+
+## Example: Clash Royale Plush (January 2024)
+
+**Timeline (12 weeks):**
+```
+[35, 38, 42, 48, 55, 60, 68, 72, 78, 80, 82, 80]
 ```
 
-**Why this works:**
-- **Numerator (Interest):** Measures market demand
-- **Denominator (Supply):** Measures competition
-- **Result:** Demand density per competitor
+**Calculations:**
+```
+Demand Strength = mean(timeline) = 64.0
 
-**Real Examples:**
+Early Average = mean([35, 38, 42]) = 38.3
+Recent Average = mean([82, 80]) = 81.0
+Momentum = (81.0 - 38.3) / 38.3 = 1.11 (+111% growth)
 
-| Product               | Interest | Supply | Score  | Verdict         |
-|-----------------------|----------|--------|--------|-----------------|
-| Clash Royale Plush    | 75       | 45     | 1.63   | 🚀 STRONG BUY   |
-| Generic Toy           | 30       | 5000   | 0.006  | ❌ Oversaturated|
-| Digital Circus Plush  | 85       | 120    | 0.70   | 💡 Consider     |
+Viability = 64.0 × (1 + 1.11) = 135.0
 
----
+Supply = 57 total (Amazon: 18, eBay: 24, Walmart: 3, AliExpress: 12)
 
-## Tech Stack & Why
+Opportunity = 135.0 / log(58) = 135.0 / 4.06 = 33.3
+```
 
-### Core Libraries
+**Result:** Score of 33.3 → **STRONG BUY 🚀**
 
-| Library          | Purpose                              | Why This Choice?                          |
-|------------------|--------------------------------------|-------------------------------------------|
-| `pytrends`       | Google Trends API                    | Free, no API key, real-time trend data    |
-| `BeautifulSoup4` | HTML parsing                         | Best for static content scraping          |
-| `requests`       | HTTP client                          | Simple, reliable, industry standard       |
-| `pandas`         | Data manipulation                    | Essential for data science workflows      |
-| `selenium`       | Browser automation                   | Handles JavaScript-heavy sites (optional) |
-| `fake-useragent` | User-Agent rotation                  | Avoid bot detection during scraping       |
-
-### Architecture Decisions
-
-**Why modular design?**
-- Each phase is an independent module
-- Easy to test, debug, and extend
-- Can swap out scrapers (eBay → Amazon → Etsy)
-
-**Why not use official APIs?**
-- Amazon API requires approval + fees
-- eBay API has strict rate limits
-- Web scraping is free and educational
+Why? Explosive growth (+111%), moderate baseline demand, and critically underserved market.
 
 ---
 
-## Installation & Setup
+## Score Interpretation
+
+| Score  | Status              | Action                     |
+|--------|---------------------|----------------------------|
+| < 1    | Oversaturated       | Skip                       |
+| 1-5    | Viable but crowded  | Test small                 |
+| 5-15   | Strong opportunity  | Research suppliers now     |
+| 15+    | Rare breakout       | Act immediately            |
+
+---
+
+## Tech Stack
+
+### Core Dependencies
+
+| Library          | Purpose                              | Why This Choice?                               |
+|------------------|--------------------------------------|------------------------------------------------|
+| `SerpApi`        | Google Trends data extraction        | No rate limits, handles anti-bot, returns JSON |
+| `requests`       | HTTP client                          | Simple, reliable, industry standard            |
+| `pandas`         | Data manipulation                    | Essential for data science workflows           |
+| `numpy`          | Mathematical operations              | Log scaling, averages, momentum calculations   |
+| `rich`           | Terminal UI                          | Beautiful console output with tables           |
+
+### Why SerpApi Over PyTrends?
+
+| Feature            | PyTrends (Free)          | SerpApi (Paid)                |
+|--------------------|--------------------------|-------------------------------|
+| Rate Limits        | ⚠️ ~100 req/hour         | ✅ 5,000 req/month ($50 plan) |
+| IP Bans            | ❌ Common                | ✅ Never                      |
+| CAPTCHAs           | ❌ Blocks scraper        | ✅ Handled automatically      |
+| Data Quality       | ✅ Direct from Google    | ✅ Direct from Google         |
+| Maintenance        | ⚠️ Breaks often          | ✅ Stable API                 |
+
+**For production use:** SerpApi is worth the cost. For academic demos: PyTrends works but expect rate limit errors.
+
+### Modular Design Philosophy
+
+```
+TrendArbitrageEngine
+│
+├── TrendDetector (src/trend_detector.py)
+│   • Uses SerpApi to fetch Google Trends data
+│   • Computes demand strength (mean interest)
+│   • Computes growth momentum (recent vs early)
+│   • Calculates viability score
+│
+├── MarketplaceScraper (src/marketplace_scraper.py)
+│   • Scrapes Amazon, eBay, Walmart, AliExpress
+│   • Uses requests + BeautifulSoup
+│   • User-Agent rotation for bot avoidance
+│   • Retry logic with delays
+│
+├── OpportunityAnalyzer (src/opportunity_analyzer.py)
+│   • Merges demand + supply data
+│   • Calculates opportunity scores (log-scaled)
+│   • Classifies and ranks products
+│   • Generates CSV reports
+│
+└── Utils (src/utils.py)
+    • Config loading (YAML)
+    • Logging setup
+    • Terminal output (Rich)
+```
+
+---
+
+## Installation
 
 ### Prerequisites
 - Python 3.8+
-- pip package manager
-- (Optional) Virtual environment
+- SerpApi account ([serpapi.com](https://serpapi.com))
 
-### Quick Start
+### Setup
 
 ```bash
-# 1. Clone the repository
+# Clone repo
 git clone https://github.com/yourusername/TrendArbitrage.git
 cd TrendArbitrage
 
-# 2. Create virtual environment (recommended)
+# Create virtual environment
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# 3. Install dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# 4. Run the pipeline
+# Add SerpApi key
+echo "SERPAPI_KEY=your_key_here" > .env
+
+# Run
 python main.py
 ```
+### API Key Configuration (CRITICAL)
+
+The system requires a **SerpApi** key to fetch Google Trends and marketplace data without being blocked.
+
+1. Create a `.env` file in the project root. Use `touch .env` to create it.
+2. Add your key:
+
+```env
+SERPAPI_KEY=your_secret_key_here_12345
+```
+
 
 ### Configuration
 
-Edit `config/config.yaml` to customize:
+Edit `config/config.yaml`:
 
 ```yaml
 trends:
-  geo: "US"              # Target country
-  timeframe: "now 7-d"   # Analysis window
+  geo: "US"              # Country code
+  timeframe: "today 3-m" # Analysis window
 
 scraping:
-  delay_between_requests: 3  # Seconds (be respectful!)
+  delay_between_requests: 3
+  max_retries: 3
   
 scoring:
-  min_interest_score: 20     # Minimum trend strength
-  max_supply_count: 500      # Maximum competitors
+  min_demand_threshold: 20
+  top_n_results: 10
 ```
 
 ---
 
-## Usage Examples
+## Usage
 
-### Basic Usage: Analyze Default Keywords
-
-```bash
-python main.py
-```
-
-**Output:**
-```
-🏆 TOP 3 DROPSHIPPING OPPORTUNITIES
-═══════════════════════════════════
-
-#1 🚀 STRONG BUY
-   Keyword: clash royale plush
-   📊 Interest Score: 75/100
-   📦 Supply Count: 45 products
-   ⚡ Opportunity Score: 1.6304
-   🏪 Market Status: Underserved ⭐⭐⭐
-```
-
-### Advanced: Custom Keywords
+### Analyze Custom Keywords
 
 ```bash
-python main.py --keywords "pokemon plush,bluey toys,squishmallow rare"
+python main.py --keywords "pokemon plush,bluey toys,squishmallow"
 ```
 
-### Advanced: Use Today's Trending Searches
+### Use Today's Trending Searches
 
 ```bash
 python main.py --trending
 ```
 
-This fetches Google's **real-time trending searches** for your country.
+This fetches Google's real-time trending searches and analyzes them.
 
----
+### Output
 
-## 📈 Understanding the Output
-
-### The CSV Report
-
-Each run generates `data/output/opportunities_TIMESTAMP.csv`:
-
-```csv
-rank,keyword,interest_score,total_supply,opportunity_score,market_status,recommendation
-1,clash royale plush,75,45,1.6304,Underserved ⭐⭐⭐,STRONG BUY 🚀
-2,digital circus plush,85,120,0.7025,Low Competition ⭐⭐,Consider 💡
-3,generic toy,30,5000,0.006,Oversaturated ❌,Avoid ❌
+Terminal display:
+```
+┏━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━┓
+┃ Rank┃ Keyword          ┃ Demand ┃ Momentum┃ Supply ┃ Opp. Score ┃
+┡━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━━┩
+│   1 │ pokemon plush    │   82   │  +1.23  │    45  │    33.8    │
+│   2 │ bluey toys       │   71   │  +0.45  │   120  │    21.4    │
+└─────┴──────────────────┴────────┴─────────┴────────┴────────────┘
 ```
 
-### Interpretation Guide
-
-| Recommendation | Meaning                                              | Action                       |
-|----------------|------------------------------------------------------|------------------------------|
-| 🚀 STRONG BUY  | High demand, minimal competition                     | Research suppliers NOW       |
-| 💡 Consider    | Good opportunity with some competition               | Test with small budget       |
-| ⚠️ Risky       | Unclear data or moderate competition                 | Proceed with caution         |
-| ❌ Avoid       | Oversaturated or low demand                          | Skip this product            |
+CSV report: `data/output/opportunities_TIMESTAMP.csv`
 
 ---
 
-## 🔬 Project Structure Explained
+## Project Structure
 
 ```
 TrendArbitrage/
-│
 ├── src/
-│   ├── trend_detector.py          # Phase 1: Google Trends scraping
-│   │   └── class TrendDetector
-│   │       • get_daily_trending_searches()
-│   │       • get_interest_over_time()
-│   │       • filter_high_velocity_trends()
-│   │
-│   ├── marketplace_scraper.py     # Phase 3: eBay/Amazon scraping
-│   │   └── class MarketplaceScraper
-│   │       • scrape_ebay()
-│   │       • scrape_amazon()
-│   │       • get_supply_metrics()
-│   │
-│   ├── opportunity_analyzer.py    # Phase 4: Score calculation
-│   │   └── class OpportunityAnalyzer
-│   │       • calculate_opportunity_score()
-│   │       • merge_and_score()
-│   │       • generate_report()
-│   │
-│   └── utils.py                   # Helper functions
-│       • load_config()
-│       • setup_logging()
-│       • print_results_summary()
+│   ├── trend_detector.py          # SerpApi integration + demand analysis
+│   ├── marketplace_scraper.py     # Multi-platform scraping
+│   ├── opportunity_analyzer.py    # Scoring engine
+│   └── utils.py                   # Helpers
 │
 ├── config/
-│   └── config.yaml                # Settings & thresholds
+│   └── config.yaml                # Settings
 │
 ├── data/
-│   ├── raw/                       # Scraped HTML (for debugging)
-│   ├── processed/                 # Cleaned datasets
-│   └── output/                    # Final CSV reports
+│   └── output/                    # Generated reports
 │
 ├── notebooks/
-│   ├── 01_exploration.ipynb       # EDA & visualizations
-│   └── 02_validation.ipynb        # Model validation
+│   ├── 01_exploration.py          # Data analysis
+│   └── 02_validation.py           # Backtesting
 │
-├── main.py                        # Main execution script
+├── .env                           # SERPAPI_KEY=xxx
+├── main.py                        # Entry point
 ├── requirements.txt               # Dependencies
-└── README.md                      # This file
+└── README.md
 ```
 
 ---
 
-## 🎯 Real-World Use Case: The Clash Royale Example
+## Why This Formula Is Better
 
-### The Story
+### Old Approach: `Interest / Supply`
 
-**January 2024:** Clash Royale mobile game sees massive resurgence
-- Reddit posts: "Best game of 2024"
-- TikTok videos: 50M+ views with #ClashRoyale
-- Google Trends: Interest score jumps from 35 → 80 in 2 weeks
+**Problems:**
+1. Cross-keyword comparisons (meaningless)
+2. Supply dominates (scores → 0 for large markets)
+3. Ignores growth trends
 
-### Manual Discovery (Old Way)
-1. Entrepreneur notices trend on social media (Lucky timing)
-2. Manually searches "clash royale plush" on eBay → 42 results
-3. Manually checks Amazon → 18 results
-4. Thinks: "This could work!" (4 hours wasted)
+**Example failure:**
+```
+Product A: Interest=80, Supply=10,000
+Score = 80/10,000 = 0.008 (crushed)
 
-### Automated Discovery (Our Way)
-```bash
-python main.py --keywords "clash royale plush"
+Product B: Interest=40, declining trend, Supply=50
+Score = 40/50 = 0.8 (looks viable but trend is dying)
 ```
 
-**Output (2 minutes later):**
+### New Approach: `Viability / log(Supply)`
+
+**Fixes:**
+1. Absolute evaluation (no comparisons)
+2. Log-scaling prevents supply crushing
+3. Momentum catches declining trends
+
+**Same examples:**
 ```
-#1 🚀 STRONG BUY
-   Keyword: clash royale plush
-   Interest: 80/100 (Rising +45%)
-   Supply: 42 products
-   Score: 1.86
-   Status: Underserved ⭐⭐⭐
-```
+Product A: Viability=92, Supply=10,000
+Score = 92/log(10,001) = 92/9.2 = 10.0 (viable!)
 
-### The Result
-- Found supplier on AliExpress: $3.50/unit
-- Sold on Shopify for $19.99
-- Created 15-second TikTok: "Just found the perfect Clash Royale gift!"
-- Video goes viral: 2M views
-- Conversion rate: 0.8% → 16,000 store visits → 128 sales
-- Profit: ~$2,100 from one video
-
-**Scalability:** Repeat for 10 trending products/month.
-
----
-
-## 📊 Data Flow Diagram
-
-```
-                   ┌──────────────────┐
-                   │  User Input      │
-                   │  (Keywords)      │
-                   └────────┬─────────┘
-                            │
-                            ▼
-              ┌─────────────────────────┐
-              │   TrendDetector         │
-              │   (pytrends API)        │
-              └───────────┬─────────────┘
-                          │
-                          │ Returns: interest_score, is_rising
-                          ▼
-              ┌─────────────────────────┐
-              │   MarketplaceScraper    │
-              │   (requests + BS4)      │
-              └───────────┬─────────────┘
-                          │
-                          │ Returns: total_supply
-                          ▼
-              ┌─────────────────────────┐
-              │  OpportunityAnalyzer    │
-              │  (pandas calculations)  │
-              └───────────┬─────────────┘
-                          │
-                          │ Calculates: opportunity_score
-                          ▼
-                  ┌───────────────┐
-                  │  CSV Report   │
-                  │  + Console    │
-                  └───────────────┘
+Product B: Viability=40×(1+0)=40, Supply=50
+Score = 40/log(51) = 40/3.9 = 10.3
+BUT: Momentum=0 → Flagged as "Stagnant" → Avoid ❌
 ```
 
 ---
 
-## Testing & Validation
+## Limitations
 
-### Unit Tests
+**Technical:**
+- SerpApi costs money ($50/month for serious use)
+- Marketplace scrapers can break if sites change HTML structure
+- Supply counts are approximate (dynamic content)
 
-```bash
-# Run all tests
-pytest tests/
-
-# Test specific module
-pytest tests/test_scrapers.py -v
-```
-
-### Manual Validation Checklist
-
-- [ ] Trending searches return real keywords
-- [ ] Interest scores are between 0-100
-- [ ] eBay scraper returns accurate product counts
-- [ ] Opportunity scores follow formula
-- [ ] CSV exports successfully
+**Ethical:**
+- Web scraping legality varies by jurisdiction
+- Respects robots.txt (implemented)
+- Only scrapes public data
+- Educational project — review local laws for commercial use
 
 ---
 
-##  Limitations & Ethics
+## Future Ideas
 
-### Technical Limitations
-
-1. **Rate Limits:** Google Trends and marketplaces may throttle requests
-   - **Solution:** Implemented delays (`time.sleep()`)
-   
-2. **Bot Detection:** Sites may block scrapers
-   - **Solution:** User-Agent rotation, respectful delays
-   
-3. **Dynamic Content:** Some sites use JavaScript rendering
-   - **Solution:** Use Selenium (slower but more reliable)
-
-### Ethical Considerations
-
-**Is web scraping legal?**
-- ✅ Scraping public data for research: Generally legal
-- ❌ Scraping copyrighted content: Illegal
-- ❌ Bypassing CAPTCHAs: Against ToS
-- ✅ Respecting `robots.txt`: Best practice
-
-**This project:**
-- Only scrapes public product listings
-- Includes delays to respect servers
-- For educational purposes only
-- Check your local laws before commercial use
+- Social media trend detection (TikTok/Instagram)
+- Price analysis for profit margin estimation
+- Email alerts for high-scoring opportunities
+- Historical tracking for pattern recognition
+- Streamlit dashboard for interactive exploration
 
 ---
 
-## 🚧 Future Enhancements
+## Real Use Case
 
-### Planned Features (v2.0)
+An entrepreneur used this exact approach during the Clash Royale resurgence:
 
-- [ ] **Social Media Integration:** Scrape TikTok/Instagram trending hashtags
-- [ ] **Price Analysis:** Estimate profit margins using AliExpress API
-- [ ] **Competitor Tracking:** Monitor top sellers' inventory
-- [ ] **Email Alerts:** Notify when Score > 1.5
-- [ ] **Dashboard UI:** Web interface with Streamlit
-- [ ] **Historical Data:** Track trends over 30 days
+1. System flagged "clash royale plush" (Score: 33.3)
+2. Found AliExpress supplier at $3.50/unit
+3. Listed on Shopify at $19.99
+4. Created viral TikTok video (2M views)
+5. 128 sales in 6 weeks = ~$2,100 profit
 
-### Advanced Ideas
-
-- **Machine Learning:** Predict which trends will spike next week
-- **Sentiment Analysis:** Analyze Reddit/Twitter sentiment for products
-- **Image Recognition:** Identify trending product visuals on social media
+By week 7, competitors flooded in. First-mover advantage captured the market.
 
 ---
 
-## 📚 Academic Presentation Tips
+## Contributing
 
-### For Your Friday Presentation
-
-**Slide 1: Problem Statement**
-> "How do dropshippers find profitable products before markets saturate?"
-
-**Slide 2: The Algorithm**
-> Show the 3-phase diagram (Demand → Validation → Supply)
-
-**Slide 3: Live Demo**
-```bash
-python main.py --keywords "trending_toy_2024"
-```
-> Show CSV output in real-time
-
-**Slide 4: Real Results**
-> Display the Clash Royale case study with before/after market data
-
-**Slide 5: Technical Stack**
-> Explain why pytrends + BeautifulSoup + pandas
-
-**Slide 6: Business Impact**
-> "This tool could save dropshippers 10+ hours/week of manual research"
+Fork, improve, submit PRs. This is a portfolio project but contributions are welcome.
 
 ---
 
-## 🤝 Contributing
+## License
 
-This is a portfolio project, but contributions are welcome!
-
-### How to Contribute
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
+MIT License — see [LICENSE](LICENSE)
 
 ---
 
-## 📜 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
-
-**For Academic Use:** Feel free to fork and adapt for your portfolio.
+**If this helped you, star the repo.**
 
 ---
 
-## 🙏 Acknowledgments
+## FAQ
 
-- **Inspiration:** The Clash Royale dropshipper case study
-- **Data Source:** Google Trends (pytrends library)
-- **Scraping Framework:** BeautifulSoup4 community
+**Q: Why not just use free PyTrends?**  
+A: Rate limits and IP bans make it unreliable for production. SerpApi costs money but actually works.
 
----
+**Q: What if momentum is negative?**  
+A: It floors at 0. Declining products get no growth boost and are flagged as "Stagnant."
 
-**⭐ If this project helped you, consider starring the repo!**
+**Q: Why log-scale supply?**  
+A: Market saturation isn't linear. 100→1,000 competitors changes everything. 10,000→20,000 changes nothing.
 
-*Built with ❤️ for the Data Science community*
+**Q: Is this legal?**  
+A: Scraping public data for research is generally legal. Commercial use requires legal review for your jurisdiction.
+
+**Q: How accurate are supply counts?**  
+A: Approximate but directionally correct. Good enough for opportunity ranking.
