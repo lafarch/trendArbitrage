@@ -69,6 +69,7 @@ class TrendArbitrageEngine:
         keywords: List[str] = None,
         use_trending: bool = False,
         temporal_analysis: bool = False,
+        platforms: List[str] = ["amazon"],
     ) -> pd.DataFrame:
         """
         Ejecuta el flujo completo: Detección -> Extracción -> Análisis.
@@ -76,7 +77,8 @@ class TrendArbitrageEngine:
         Args:
             keywords: Lista de keywords a analizar
             use_trending: Si True, usa trending searches de Google
-            temporal_analysis: Si True, genera análisis temporal (7d, 1m, 3m, 6m, 12m)
+            temporal_analysis: Si True, genera análisis temporal
+            platforms: Lista de plataformas donde buscar (amazon, ebay, etc.)
 
         Returns:
             DataFrame con opportunity scores y verdicts
@@ -117,11 +119,13 @@ class TrendArbitrageEngine:
         # ==========================================
         # PASO 3: Verificación de Suministro (Marketplaces)
         # ==========================================
-        console.print("[bold green]Checking marketplace supply...[/bold green]")
+        console.print(
+            f"[bold green]Checking supply on: {', '.join(platforms)}...[/bold green]"
+        )
         supply_data = []
 
         for kw in interest_df["keyword"]:
-            metrics = self.scraper.get_supply_metrics(kw)
+            metrics = self.scraper.get_supply_metrics(kw, platforms=platforms)
             supply_data.append(metrics)
 
         supply_df = pd.DataFrame(supply_data)
@@ -176,18 +180,6 @@ class TrendArbitrageEngine:
         # ==========================================
         # PASO 7: Guardar y Retornar
         # ==========================================
-        """if not report_df.empty:
-            output_path = self.config.get("output", {}).get("csv_path", "data/output/report.csv")
-            self.analyzer.save_report(report_df, output_path)
-            
-            console.print(
-                Panel(
-                    f"[green]Pipeline completed successfully[/green]\nResults for {len(report_df)} products.",
-                    border_style="green",
-                )
-            )
-        
-        return report_df"""
         if not report_df.empty:
             # 1. Guardar CSV Estándar (Reporte general)
             output_path = self.config.get("output", {}).get(

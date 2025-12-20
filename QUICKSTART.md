@@ -8,7 +8,7 @@ Get up and running in 5 minutes!
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/TrendArbitrage.git
+git clone [https://github.com/yourusername/TrendArbitrage.git](https://github.com/yourusername/TrendArbitrage.git)
 cd TrendArbitrage
 
 # Create virtual environment
@@ -20,20 +20,43 @@ source venv/bin/activate
 # On Windows:
 venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (Core + Frontend)
 pip install -r requirements.txt
+pip install streamlit plotly 
 ```
 
 ---
 
-## Step 2: Run Your First Analysis (1 minute)
+## Step 2: Launch Web Dashboard (Recommended)
+The easiest way to analyze markets is using the new interactive interface.
 
 ```bash
 # Basic run with default keywords
-python main.py
+streamlit run app.py
 ```
 
-**Expected output:**
+This will automatically open your browser at http://localhost:8501.
+
+How to use:
+
+    Enter Keywords: Type products separated by commas (e.g., yoga mat, mechanical keyboard).
+
+    Select Sources: Choose which marketplaces to scan (Amazon, eBay, Walmart, AliExpress).
+
+    Analyze: Click "ANALYZE MARKET" to see real-time opportunities.
+
+
+
+## Step 3: CLI Usage (Advanced / Automation)
+
+If you prefer the terminal or want to run automated cron jobs:
+
+```bash
+# Analyze specific keywords
+python main.py --keywords "pokemon plush,zelda merchandise"
+
+```
+**Expected functionality example:**
 ```
 🎯 TrendArbitrage v1.0
 AI-Powered Dropshipping Niche Discovery Engine
@@ -63,109 +86,63 @@ AI-Powered Dropshipping Niche Discovery Engine
 🏆 TOP 3 DROPSHIPPING OPPORTUNITIES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-#1 🚀 STRONG BUY
-   Keyword: clash royale plush
-   📊 Interest Score: 75/100
-   📦 Supply Count: 45 products
-   ⚡ Opportunity Score: 1.6304
-   🏪 Market Status: Underserved ⭐⭐⭐
+📋
+
+# ❌ EVITAR (9.6/100) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Demanda cualificada: 1,616 búsquedas/mes 🔴 Competencia: 2,226 ofertas 🔴 Ratio D/S: 482.50 (CRÍTICO)
+
+   💀 Problema crítico: Ratio D/S crítico (482.50) Demanda 1,616 ÷ Pressure 3.35 = ratio pésimo Momentum: 1.00x (no salva el ratio base)
+
+   → Mercado inviable. Buscar otro nicho.
 ```
 
----
 
-## Step 3: Analyze Custom Keywords (30 seconds)
-
-```bash
-# Analyze your own product ideas
-python main.py --keywords "pokemon plush,zelda merchandise,anime figures"
-```
 
 ---
 
-## Step 4: Use Real-Time Trending Searches (1 minute)
-
-```bash
-# Fetch TODAY's trending searches automatically
-python main.py --trending
-```
-
-This will automatically fetch what people are searching for RIGHT NOW and analyze those products.
-
 ---
 
-## Step 5: Check Your Results
+## Step 4: Check Your Results
 
-Your CSV report is saved in `data/output/opportunities_TIMESTAMP.csv`
+If using the Dashboard:
 
-Open it in Excel/Google Sheets to see:
-- **Rank:** 1-N based on opportunity score
-- **Keyword:** Product name
-- **Interest Score:** Google search popularity (0-100)
-- **Supply Count:** Number of existing products
-- **Opportunity Score:** Our calculated "profit potential"
-- **Market Status:** Underserved / Low Competition / Oversaturated
-- **Recommendation:** STRONG BUY / Consider / Risky / Avoid
+    Visuals: Real-time scatter plots (Demand vs Supply) and Sales Simulations.
 
----
+    Data: Detailed JSONs are saved to data/frontend/.
 
-## Common Use Cases
+If using the CLI:
 
-### 1. Daily Opportunity Scanner
-Run every morning to catch new trends:
-```bash
-python main.py --trending > daily_report.txt
-```
+    Report: Your CSV is saved in data/output/report.csv.
 
-### 2. Validate Your Product Ideas
-Have product ideas? Test them:
-```bash
-python main.py --keywords "your product 1,your product 2,your product 3"
-```
+    Columns: Rank, Keyword, Opportunity Score, Demand Signal, Total Supply, Verdict.
 
-### 3. Niche Research for TikTok Shop
-Find products perfect for short-form video:
-```bash
-python main.py --keywords "viral toy,trending gadget,tiktok must have"
-```
+Troubleshooting
+Issue: "Streamlit is not recognized"
 
----
+Solution: Make sure you activated the virtual environment and ran pip install streamlit plotly.
+Issue: "Rate limit exceeded"
 
-## Troubleshooting
+Solution: The scraper is being respectful with delays. If you hit rate limits:
 
-### Issue: "No module named 'pytrends'"
-**Solution:** Make sure you activated the virtual environment and ran `pip install -r requirements.txt`
+    Increase delay in config/config.yaml: delay_between_requests: 5
 
-### Issue: "Rate limit exceeded"
-**Solution:** The scraper is being respectful with delays. If you hit rate limits:
-1. Increase delay in `config/config.yaml`: `delay_between_requests: 5`
-2. Run with fewer keywords at a time
+    Run with fewer keywords at a time.
 
-### Issue: "eBay returned 0 results for everything"
-**Solution:** 
-- Check your internet connection
-- eBay may have changed their HTML structure (update the scraper)
-- Try running again in a few minutes (temporary block)
+Issue: "eBay/Walmart returned 0 results"
 
-### Issue: "CAPTCHA detected"
-**Solution:** Set `use_selenium: true` in `config/config.yaml` (slower but more reliable)
+Solution:
 
----
+    Check your internet connection.
 
-## Next Steps
+    Ensure your SerpAPI key has remaining credits.
 
-✅ **Check the full README.md** for detailed documentation  
-✅ **Open `notebooks/01_exploration.ipynb`** to visualize your data  
-✅ **Customize `config/config.yaml`** for your preferences  
-✅ **Read the code comments** to understand how it works  
+    Try running again in a few minutes (temporary IP block).
 
----
+Next Steps
 
-## Need Help?
+✅ Check the full README.md for detailed documentation on metrics.
 
-- **Documentation:** See [README.md](README.md)
-- **Issues:** Open a GitHub issue
-- **Questions:** Check the comments in the source code
+✅ Customize config/config.yaml to adjust thresholds.
 
----
+✅ Read the code comments to understand the "Opportunity Score" math.
 
-**Happy arbitrage hunting! 🎯💰**
+Happy arbitrage hunting!
