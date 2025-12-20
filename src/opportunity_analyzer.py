@@ -38,9 +38,7 @@ class OpportunityAnalyzer:
     def __init__(self, min_interest: int = 20, max_supply: int = 500):
         self.min_interest = min_interest
         self.max_supply = max_supply
-        logger.info(
-            f"OpportunityAnalyzer initialized (min_interest={min_interest})"
-        )
+        logger.info(f"OpportunityAnalyzer initialized (min_interest={min_interest})")
 
     # ==========================================
     # CORE SCORING ALGORITHM (SIMPLIFIED)
@@ -49,32 +47,32 @@ class OpportunityAnalyzer:
     def calculate_opportunity_score(
         self,
         monthly_searches: int,
-        purchase_intent: float,      # 0-100
+        purchase_intent: float,  # 0-100
         total_supply: int,
         trend_velocity: float,
     ) -> Dict:
         """
         Opportunity Score = (Demand Signal / Supply Pressure) × Momentum × 100
-        
+
         FÓRMULA SIMPLIFICADA:
         ---------------------
         1. Demand Signal = monthly_searches × (purchase_intent / 100)
            → Búsquedas cualificadas por intención de compra
-        
+
         2. Supply Pressure = log₁₀(total_supply + 10)
            → Competencia en escala logarítmica
-        
+
         3. Base Ratio = Demand Signal / Supply Pressure
            → Demanda cualificada por unidad de competencia
-        
+
         4. Momentum Multiplier = 1 + (velocity × 0.5)
            → Amplificador de 1x (velocity=0) a 2x (velocity=2.0)
-        
+
         5. Final Score = (Base Ratio × Momentum Multiplier) / 50
            → Normalizado a escala 0-100
-        
+
         RESULTADO: 0-100 donde 100 = demanda explosiva con baja competencia
-        
+
         Ejemplos:
         ---------
         Caso 1: 10,000 búsquedas, 70% intent, 100 ofertas, velocity 1.5
@@ -83,7 +81,7 @@ class OpportunityAnalyzer:
           → Base Ratio: 7,000 / 2.04 = 3,431
           → Momentum: 1 + (1.5 × 0.5) = 1.75x
           → Score: (3,431 × 1.75) / 50 = 120 → capped at 100 ✅
-        
+
         Caso 2: 5,000 búsquedas, 30% intent, 10,000 ofertas, velocity 0.1
           → Demand Signal: 5,000 × 0.3 = 1,500
           → Pressure: log₁₀(10,010) = 4.0
@@ -91,36 +89,36 @@ class OpportunityAnalyzer:
           → Momentum: 1 + (0.1 × 0.5) = 1.05x
           → Score: (375 × 1.05) / 50 = 7.9 ❌
         """
-        
+
         # PASO 1: Calcular demanda cualificada
         demand_signal = monthly_searches * (purchase_intent / 100)
-        
+
         # PASO 2: Presión de competencia (log scale)
         supply_pressure = math.log10(total_supply + 10)
-        
+
         # PASO 3: Ratio base (demanda/competencia)
         if supply_pressure > 0 and demand_signal > 0:
             base_ratio = demand_signal / supply_pressure
         else:
             base_ratio = 0
-        
+
         # PASO 4: Momentum multiplier (1x a 2x)
         momentum_multiplier = 1 + (max(0, trend_velocity) * 0.5)
         momentum_multiplier = min(momentum_multiplier, 2.0)  # Cap at 2x
-        
+
         # PASO 5: Score final (normalizado a 0-100)
         final_score = (base_ratio * momentum_multiplier) / 50
         final_score = max(0, min(100, final_score))
-        
+
         # PASO 6: Penalización adicional por extrema saturación
         saturation_penalty = 0
         if total_supply > 20000:
             saturation_penalty = 15
         elif total_supply > 10000:
             saturation_penalty = 10
-        
+
         final_score = max(0, final_score - saturation_penalty)
-        
+
         # ANÁLISIS DE FACTORES
         return {
             "score": round(final_score, 1),
@@ -162,9 +160,9 @@ class OpportunityAnalyzer:
         """
         Genera veredicto honesto sin teatro financiero.
         """
-        
+
         supply_pressure = math.log10(supply + 10)
-        
+
         if score >= 70:
             return (
                 f"🚀 EXCELENTE OPORTUNIDAD ({score:.1f}/100)\n"
@@ -179,7 +177,7 @@ class OpportunityAnalyzer:
                 f"  • {'Crecimiento acelerado' if velocity > 0.5 else 'Demanda estable'}\n"
                 f"\n→ ACTUAR RÁPIDO. Ventana de oportunidad."
             )
-        
+
         elif score >= 50:
             return (
                 f"💡 OPORTUNIDAD VIABLE ({score:.1f}/100)\n"
@@ -194,7 +192,7 @@ class OpportunityAnalyzer:
                 f"  • Requiere diferenciación fuerte\n"
                 f"\n→ VIABLE con ejecución sólida."
             )
-        
+
         elif score >= 30:
             # Identificar problema dominante
             if supply > 5000:
@@ -203,7 +201,7 @@ class OpportunityAnalyzer:
                 problem = f"Demanda baja ({demand_signal:,.0f} búsquedas cualificadas)"
             else:
                 problem = f"Ratio D/S insuficiente ({base_ratio:.1f})"
-            
+
             return (
                 f"⚠️ RIESGOSO ({score:.1f}/100)\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -215,7 +213,7 @@ class OpportunityAnalyzer:
                 f"  • Momentum: {momentum_multiplier:.2f}x {'⚠️' if momentum_multiplier < 1.2 else ''}\n"
                 f"\n→ Márgenes comprimidos. Solo para expertos."
             )
-        
+
         else:
             # Diagnóstico crítico
             if supply > 10000:
@@ -223,11 +221,13 @@ class OpportunityAnalyzer:
                 explanation = f"Supply pressure {supply_pressure:.2f} divide tu demanda hasta volverla inviable"
             elif demand_signal < 500:
                 critical_issue = f"Demanda insuficiente ({demand_signal:,.0f})"
-                explanation = f"Necesitas 5-10x más búsquedas o mayor intención de compra"
+                explanation = (
+                    f"Necesitas 5-10x más búsquedas o mayor intención de compra"
+                )
             else:
                 critical_issue = f"Ratio D/S crítico ({base_ratio:.2f})"
                 explanation = f"Demanda {demand_signal:,.0f} ÷ Pressure {supply_pressure:.2f} = ratio pésimo"
-            
+
             return (
                 f"❌ EVITAR ({score:.1f}/100)\n"
                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -254,7 +254,7 @@ class OpportunityAnalyzer:
     ) -> Dict:
         """
         Calcula opportunity scores REALES para cada período.
-        
+
         Ahora usa los datos históricos específicos de cada ventana
         en lugar de reutilizar el mismo baseline.
         """
@@ -265,28 +265,28 @@ class OpportunityAnalyzer:
             "6m": 180,
             "12m": 365,
         }
-        
+
         results = {}
-        
+
         for period_name, days in periods.items():
             # Filtrar datos históricos por período
             recent_data = history[-days:] if len(history) >= days else history
-            
+
             if not recent_data:
                 continue
-            
+
             # Calcular DEMANDA REAL del período (no baseline)
             values = [d["value"] for d in recent_data]
             avg_interest = np.mean(values)
-            
+
             # Escalar a búsquedas mensuales para este período específico
             # Usamos la función directamente en lugar de importar
             period_monthly_searches = int((avg_interest / 100) * 10000)
             period_monthly_searches = max(period_monthly_searches, 100)
-            
+
             # Calcular velocidad de crecimiento en este período
             trend_velocity = compute_trend_slope(values)
-            
+
             # Calcular opportunity score con datos REALES del período
             score_data = self.calculate_opportunity_score(
                 monthly_searches=period_monthly_searches,  # REAL del período
@@ -294,7 +294,7 @@ class OpportunityAnalyzer:
                 total_supply=total_supply,
                 trend_velocity=trend_velocity,
             )
-            
+
             # Generar veredicto
             verdict = self.generate_verdict(
                 score=score_data["score"],
@@ -305,7 +305,7 @@ class OpportunityAnalyzer:
                 base_ratio=score_data["base_ratio"],
                 momentum_multiplier=score_data["momentum_multiplier"],
             )
-            
+
             results[period_name] = {
                 **score_data,
                 "period": period_name,
@@ -315,7 +315,7 @@ class OpportunityAnalyzer:
                 "data_points": len(values),
                 "verdict": verdict,
             }
-        
+
         return results
 
     # ==========================================
@@ -326,13 +326,13 @@ class OpportunityAnalyzer:
         """
         Genera reporte con scoring simplificado (sin revenue theater).
         """
-        
+
         if df.empty:
             logger.warning("Empty dataframe provided to generate_report")
             return pd.DataFrame()
-        
+
         opportunities = []
-        
+
         for _, row in df.iterrows():
             # Calcular opportunity score
             score_data = self.calculate_opportunity_score(
@@ -341,7 +341,7 @@ class OpportunityAnalyzer:
                 total_supply=row.get("total_supply", 0),
                 trend_velocity=row.get("velocity", 0),
             )
-            
+
             # Generar veredicto
             verdict = self.generate_verdict(
                 score=score_data["score"],
@@ -352,37 +352,39 @@ class OpportunityAnalyzer:
                 base_ratio=score_data["base_ratio"],
                 momentum_multiplier=score_data["momentum_multiplier"],
             )
-            
+
             # Compilar resultado
-            opportunities.append({
-                "keyword": row["keyword"],
-                "opportunity_score": score_data["score"],
-                "demand_signal": score_data["demand_signal"],
-                "monthly_searches": row.get("monthly_searches", 0),
-                "purchase_intent_score": row.get("purchase_intent_score", 0),
-                "total_supply": row.get("total_supply", 0),
-                "competition_level": score_data["competition_level"],
-                "supply_pressure": score_data["supply_pressure"],
-                "base_ratio": score_data["base_ratio"],
-                "trend_velocity": row.get("velocity", 0),
-                "momentum_multiplier": score_data["momentum_multiplier"],
-                "is_rising": row.get("is_rising", False),
-                "verdict": verdict,
-                "history": row.get("history", []),
-            })
-        
+            opportunities.append(
+                {
+                    "keyword": row["keyword"],
+                    "opportunity_score": score_data["score"],
+                    "demand_signal": score_data["demand_signal"],
+                    "monthly_searches": row.get("monthly_searches", 0),
+                    "purchase_intent_score": row.get("purchase_intent_score", 0),
+                    "total_supply": row.get("total_supply", 0),
+                    "competition_level": score_data["competition_level"],
+                    "supply_pressure": score_data["supply_pressure"],
+                    "base_ratio": score_data["base_ratio"],
+                    "trend_velocity": row.get("velocity", 0),
+                    "momentum_multiplier": score_data["momentum_multiplier"],
+                    "is_rising": row.get("is_rising", False),
+                    "verdict": verdict,
+                    "history": row.get("history", []),
+                }
+            )
+
         report = pd.DataFrame(opportunities)
-        
+
         # Ordenar por opportunity score (descendente)
         report = report.sort_values("opportunity_score", ascending=False)
-        
+
         # Limitar a top_n
         report = report.head(top_n)
-        
+
         # Agregar ranking
         if not report.empty:
             report.insert(0, "rank", range(1, len(report) + 1))
-        
+
         logger.info(f"Generated report with {len(report)} opportunities")
         return report
 
@@ -391,3 +393,58 @@ class OpportunityAnalyzer:
         df.to_csv(filepath, index=False)
         logger.info(f"Report saved to {filepath}")
         print(f"\n✅ Report saved: {filepath}")
+
+        #######################################################
+
+    def generate_frontend_json(self, row: pd.Series) -> Dict:
+        """
+        Genera un JSON para el frontend usando Simulación Matemática.
+        Convierte la curva de interés de Google Trends en una curva de ventas estimadas.
+        """
+        history = row.get("history", [])
+        purchase_intent = row.get("purchase_intent_score", 0)
+        baseline_searches = row.get("monthly_searches", 0)
+
+        # 1. Definir el volumen base de ventas mensuales (Simulación)
+        # Fórmula: Búsquedas Mensuales * (Intención de Compra %) * Tasa de Conversión Estándar (3%)
+        estimated_monthly_sales = int(
+            baseline_searches * (purchase_intent / 100) * 0.03
+        )
+
+        # Evitar ceros si la estimación es muy baja
+        if estimated_monthly_sales < 10:
+            estimated_monthly_sales = 10
+
+        historical_series = []
+
+        # 2. Distribuir estas ventas en el tiempo según la curva de tendencias
+        for point in history:
+            # point es {'date': 'Dec 1-7, 2024', 'value': 85}
+            trend_value = point.get("value", 0)  # Valor 0-100 de Google
+            date_val = point.get("date", "")
+
+            # Cálculo de ventas para esa semana específica:
+            # (ValorTrend / 50) * (VentasMensuales / 4 semanas)
+            # Usamos 50 como promedio heurístico para normalizar la curva
+            point_sales = int((trend_value / 50) * (estimated_monthly_sales / 4))
+
+            historical_series.append(
+                {
+                    "date": date_val,
+                    "trend_index": trend_value,  # Dato real de interés (Google)
+                    "estimated_sales": point_sales,  # Dato simulado de ventas
+                }
+            )
+
+        return {
+            "keyword": row["keyword"],
+            "simulation_method": "math_intent_based",
+            "metrics": {
+                "opportunity_score": row["opportunity_score"],
+                "supply_total": row["total_supply"],
+                "competition_level": row.get("competition_level", "N/A"),
+                "avg_monthly_searches": baseline_searches,
+                "estimated_monthly_sales": estimated_monthly_sales,
+            },
+            "timeline": historical_series,
+        }

@@ -55,10 +55,7 @@ class MarketplaceScraper:
                 search = GoogleSearch(params)
                 results = search.get_dict()
 
-                count = (
-                    results.get("search_information", {})
-                    .get("total_results")
-                )
+                count = results.get("search_information", {}).get("total_results")
 
                 if count is not None:
                     return int(count)
@@ -73,29 +70,37 @@ class MarketplaceScraper:
     # Platform-specific methods
     # -------------------------
     def amazon_supply(self, keyword: str) -> int:
-        return self._query_serpapi({
-            "engine": "amazon",
-            "amazon_domain": "amazon.com",
-            "k": keyword,
-        })
+        return self._query_serpapi(
+            {
+                "engine": "amazon",
+                "amazon_domain": "amazon.com",
+                "k": keyword,
+            }
+        )
 
     def ebay_supply(self, keyword: str) -> int:
-        return self._query_serpapi({
-            "engine": "ebay",
-            "_nkw": keyword,
-        })
+        return self._query_serpapi(
+            {
+                "engine": "ebay",
+                "_nkw": keyword,
+            }
+        )
 
     def walmart_supply(self, keyword: str) -> int:
-        return self._query_serpapi({
-            "engine": "walmart",
-            "query": keyword,
-        })
+        return self._query_serpapi(
+            {
+                "engine": "walmart",
+                "query": keyword,
+            }
+        )
 
     def aliexpress_supply(self, keyword: str) -> int:
-        return self._query_serpapi({
-            "engine": "aliexpress",
-            "query": keyword,
-        })
+        return self._query_serpapi(
+            {
+                "engine": "aliexpress",
+                "query": keyword,
+            }
+        )
 
     # -------------------------
     # Public interface (USED BY main.py)
@@ -103,7 +108,7 @@ class MarketplaceScraper:
     def get_supply_metrics(
         self,
         keyword: str,
-        platforms: List[str] = ["amazon", "ebay"],
+        platforms: List[str] = ["amazon"],
     ) -> Dict:
         """
         Get supply counts across selected platforms.
