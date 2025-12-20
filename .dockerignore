@@ -38,6 +38,7 @@ logs/
 # Output data (will be mounted as volumes)
 data/output/*
 data/frontend/*
+data/**/*.json
 
 # Documentation (not needed in container)
 README.md

@@ -37,6 +37,7 @@ env/
 data/raw/
 data/processed/
 data/output/*.csv
+data/**/*.json
 
 # Keep directory structure
 !data/raw/.gitkeep
