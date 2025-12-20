@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  trendarbitrage:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trendarbitrage
+    ports:
+      - "8501:8501"  # Streamlit web interface
+    environment:
+      - SERPAPI_KEY=${SERPAPI_KEY}
+    env_file:
+      - .env  # Load environment variables from .env file
+    volumes:
+      # Persist output data
+      - ./data/output:/app/data/output
+      - ./data/frontend:/app/data/frontend
+      - ./logs:/app/logs
+      # Mount config for easy customization
+      - ./config:/app/config
+    restart: unless-stopped
+    networks:
+      - trendarbitrage_network
+
+networks:
+  trendarbitrage_network:
+    driver: bridge

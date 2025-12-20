@@ -1,41 +1,44 @@
-# 🚀 TrendArbitrage - Quick Start Guide
+# 🚀 TrendArbitrage - Quick Start
 
-Get up and running in 5 minutes!
+Get running in **3 minutes**.
 
 ---
 
-## Step 1: Clone & Setup (2 minutes)
-
+## Step 1: Install (1 min)
 ```bash
-# Clone the repository
-git clone [https://github.com/yourusername/TrendArbitrage.git](https://github.com/yourusername/TrendArbitrage.git)
+git clone https://github.com/yourusername/TrendArbitrage.git
 cd TrendArbitrage
 
 # Create virtual environment
 python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Activate virtual environment
-# On macOS/Linux:
-source venv/bin/activate
-# On Windows:
-venv\Scripts\activate
-
-# Install dependencies (Core + Frontend)
+# Install all dependencies
 pip install -r requirements.txt
-pip install streamlit plotly 
 ```
 
 ---
 
-## Step 2: Launch Web Dashboard (Recommended)
-The easiest way to analyze markets is using the new interactive interface.
+## Step 2: Configure API Key (1 min)
 
+**Get SerpAPI Key** (required for data):
+1. Sign up at https://serpapi.com (100 free searches/month)
+2. Copy your API key
+
+**Create `.env` file** in project root:
 ```bash
-# Basic run with default keywords
-streamlit run app.py
+SERPAPI_KEY=your_key_here
 ```
 
-This will automatically open your browser at http://localhost:8501.
+---
+
+## Step 3: Run (1 min)
+
+### Option A: Web Dashboard (Recommended)
+```bash
+streamlit run app.py
+```
+Opens browser at `http://localhost:8501`
 
 How to use:
 
@@ -45,104 +48,56 @@ How to use:
 
     Analyze: Click "ANALYZE MARKET" to see real-time opportunities.
 
-
-
-## Step 3: CLI Usage (Advanced / Automation)
+### Option B: CLI Usage (Advanced / Automation)
 
 If you prefer the terminal or want to run automated cron jobs:
 
 ```bash
-# Analyze specific keywords
-python main.py --keywords "pokemon plush,zelda merchandise"
+# Analyze specific products
+python main.py --keywords "yoga mat,phone case"
 
+# Use today's trending searches
+python main.py --trending
+
+# Generate temporal analysis
+python main.py --keywords "bluetooth headphones" --temporal
 ```
-**Expected functionality example:**
-```
-🎯 TrendArbitrage v1.0
-AI-Powered Dropshipping Niche Discovery Engine
-
-🚀 STARTING TRENDARBITRAGE PIPELINE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 Analyzing 10 keywords:
-   1. clash royale plush
-   2. skibidi toilet toy
-   ...
-
-📈 Phase 2: Analyzing search interest...
-✅ Retrieved interest data for 10 keywords
-
-🛒 Phase 3: Checking marketplace supply...
-   Scraping: clash royale plush...
-✅ Retrieved supply data for 10 keywords
-
-🎯 Phase 4: Calculating Opportunity Scores...
-✅ Calculated scores for 10 products
-
-📊 Phase 5: Generating opportunity report...
-✅ Report saved: data/output/opportunities_20240115_143022.csv
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏆 TOP 3 DROPSHIPPING OPPORTUNITIES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋
-
-# ❌ EVITAR (9.6/100) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Demanda cualificada: 1,616 búsquedas/mes 🔴 Competencia: 2,226 ofertas 🔴 Ratio D/S: 482.50 (CRÍTICO)
-
-   💀 Problema crítico: Ratio D/S crítico (482.50) Demanda 1,616 ÷ Pressure 3.35 = ratio pésimo Momentum: 1.00x (no salva el ratio base)
-
-   → Mercado inviable. Buscar otro nicho.
-```
-
-
 
 ---
 
+## Understanding Results
+
+**Opportunity Score (0-100)**:
+- **70-100** 🚀 Excellent - High demand, low competition
+- **50-69** 💡 Viable - Good fundamentals, needs execution
+- **30-49** ⚠️ Risky - Compressed margins
+- **0-29** ❌ Avoid - Economics don't work
+
+**Key Metrics**:
+- `Demand Signal`: Monthly qualified searches (intent-adjusted)
+- `Supply Pressure`: log₁₀(competition) - logarithmic scale
+- `Base Ratio`: Demand/Supply economics
+- `Momentum`: Growth amplifier (1x to 2x)
+
 ---
 
-## Step 4: Check Your Results
+## Troubleshooting
 
-If using the Dashboard:
+**"SERPAPI_KEY not found"**
+→ Create `.env` file with your key (see Step 2)
 
-    Visuals: Real-time scatter plots (Demand vs Supply) and Sales Simulations.
+**"Rate limit exceeded"**
+→ SerpAPI free tier = 100 searches/month. Upgrade or wait.
 
-    Data: Detailed JSONs are saved to data/frontend/.
+**"No data returned"**
+→ Check keyword spelling. Try broader terms first.
 
-If using the CLI:
+---
 
-    Report: Your CSV is saved in data/output/report.csv.
+## Next Steps
 
-    Columns: Rank, Keyword, Opportunity Score, Demand Signal, Total Supply, Verdict.
-
-Troubleshooting
-Issue: "Streamlit is not recognized"
-
-Solution: Make sure you activated the virtual environment and ran pip install streamlit plotly.
-Issue: "Rate limit exceeded"
-
-Solution: The scraper is being respectful with delays. If you hit rate limits:
-
-    Increase delay in config/config.yaml: delay_between_requests: 5
-
-    Run with fewer keywords at a time.
-
-Issue: "eBay/Walmart returned 0 results"
-
-Solution:
-
-    Check your internet connection.
-
-    Ensure your SerpAPI key has remaining credits.
-
-    Try running again in a few minutes (temporary IP block).
-
-Next Steps
-
-✅ Check the full README.md for detailed documentation on metrics.
-
-✅ Customize config/config.yaml to adjust thresholds.
-
-✅ Read the code comments to understand the "Opportunity Score" math.
+📖 Read `README.md` for metric formulas  
+⚙️ Customize `config/config.yaml` for thresholds  
+📊 Export reports from `data/output/`
 
 Happy arbitrage hunting!

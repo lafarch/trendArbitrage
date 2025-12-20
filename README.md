@@ -3,6 +3,50 @@
 **Automated dropshipping niche discovery engine.** Identifies profitable products by analyzing demand trends and marketplace supply saturation.
 
 ---
+## Quick Setup
+
+1. **Install dependencies**:
+```bash
+   pip install -r requirements.txt
+```
+
+2. **Get SerpAPI Key**: Sign up at [serpapi.com](https://serpapi.com)
+
+3. **Configure**:
+```bash
+   # Create .env file
+   echo "SERPAPI_KEY=your_key_here" > .env
+```
+
+4. **Run**:
+```bash
+   # Web interface
+   streamlit run app.py
+   
+   # CLI
+   python main.py --keywords "your keywords"
+```
+## Web Dashboard
+
+Interactive interface for real-time analysis:
+```bash
+streamlit run app.py
+```
+
+**Features**:
+- Multi-keyword analysis
+- Real-time supply scanning (Amazon, eBay, Walmart, AliExpress)
+- Interactive scatter plots (Demand vs Supply)
+- Historical trend simulation
+- Downloadable reports
+
+**Usage**:
+1. Enter keywords (comma-separated)
+2. Select marketplaces to scan
+3. Click "ANALYZE MARKET"
+4. View opportunity scores + verdicts
+
+---
 
 ## How It Works
 
@@ -19,7 +63,6 @@
 ```
 
 ---
-
 ## Core Metrics Explained
 
 ### 1. **Opportunity Score (0-100)**

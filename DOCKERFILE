@@ -1,0 +1,77 @@
+# TrendArbitrage Dockerfile
+# Multi-stage build for optimized production image
+
+# ============================================
+# Stage 1: Builder (dependencies)
+# ============================================
+FROM python:3.11-slim as builder
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies for building Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (for Docker layer caching)
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# ============================================
+# Stage 2: Runtime (final image)
+# ============================================
+FROM python:3.11-slim
+
+# Metadata
+LABEL maintainer="your-email@example.com"
+LABEL description="TrendArbitrage - Dropshipping Niche Discovery Engine"
+LABEL version="1.0"
+
+# Set working directory
+WORKDIR /app
+
+# Copy Python packages from builder
+COPY --from=builder /root/.local /root/.local
+
+# Update PATH to use user-installed packages
+ENV PATH=/root/.local/bin:$PATH
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p data/output data/frontend logs config
+
+# Create config.yaml if it doesn't exist
+RUN if [ ! -f config/config.yaml ]; then \
+    echo "trends:" > config/config.yaml && \
+    echo "  geo: US" >> config/config.yaml && \
+    echo "  timeframe: today 12-m" >> config/config.yaml && \
+    echo "" >> config/config.yaml && \
+    echo "scraping:" >> config/config.yaml && \
+    echo "  delay_between_requests: 3" >> config/config.yaml && \
+    echo "  max_retries: 3" >> config/config.yaml && \
+    echo "" >> config/config.yaml && \
+    echo "scoring:" >> config/config.yaml && \
+    echo "  min_interest_score: 20" >> config/config.yaml && \
+    echo "  max_supply_count: 500" >> config/config.yaml && \
+    echo "" >> config/config.yaml && \
+    echo "output:" >> config/config.yaml && \
+    echo "  csv_path: data/output/report.csv" >> config/config.yaml && \
+    echo "  temporal_path: data/output/temporal_analysis.csv" >> config/config.yaml && \
+    echo "  log_path: logs/scraper.log" >> config/config.yaml; \
+    fi
+
+# Expose Streamlit port
+EXPOSE 8501
+
+# Health check for Streamlit
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl --fail http://localhost:8501/_stcore/health || exit 1
+
+# Default command: Run Streamlit web dashboard
+CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
