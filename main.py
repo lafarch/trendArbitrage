@@ -146,8 +146,6 @@ class TrendArbitrageEngine:
                     keyword=row["keyword"],
                     history=row.get("history", []),
                     purchase_intent=row["purchase_intent_score"],
-                    conversion_rate=row.get("estimated_conversion_rate", 0.01),
-                    avg_price=row["avg_price"],
                     total_supply=row["total_supply"],
                     baseline_monthly_searches=row["monthly_searches"],
                 )
@@ -192,8 +190,12 @@ class TrendArbitrageEngine:
                     "keyword": keyword,
                     "period": period,
                     "score": data["score"],
-                    "potential_revenue": data["potential_monthly_revenue"],
+                    "demand_signal": data["demand_signal"],
+                    "monthly_searches": data["monthly_searches"],
                     "competition_level": data["competition_level"],
+                    "supply_pressure": data["supply_pressure"],
+                    "base_ratio": data["base_ratio"],
+                    "momentum_multiplier": data["momentum_multiplier"],
                     "trend_velocity": data["trend_velocity"],
                     "data_points": data["data_points"],
                 })

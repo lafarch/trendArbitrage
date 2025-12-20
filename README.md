@@ -13,7 +13,7 @@
    ↓
 2. Supply Scraping (Amazon, eBay via SerpAPI)
    ↓
-3. Opportunity Scoring (0-100 economic viability)
+3. Opportunity Scoring (0-100, demand/supply ratio)
    ↓
 4. Report Generation (CSV + detailed verdicts)
 ```
@@ -24,41 +24,49 @@
 
 ### 1. **Opportunity Score (0-100)**
 
-Economic viability metric combining demand, competition, and momentum.
+Simplified viability metric: qualified demand vs logarithmic competition, amplified by momentum.
 
 **Formula:**
 ```
-Demand Monetized = monthly_searches × conversion_rate × avg_price
+Demand Signal = monthly_searches × (purchase_intent / 100)
 Supply Pressure = log₁₀(total_supply + 10)
+Base Ratio = Demand Signal / Supply Pressure
 
-Base Score (0-60) = Demand Monetized / Supply Pressure / 100
-+ Purchase Intent Bonus (0-20)
-+ Momentum Bonus (0-20)
-- Saturation Penalty (0-30)
-= Final Score (0-100)
+Momentum Multiplier = 1 + (velocity × 0.5)  # Range: 1x to 2x
+
+Final Score = (Base Ratio × Momentum Multiplier) / 50
+Final Score = clamp(0, 100) - saturation_penalty
 ```
 
+**Why this works:**
+- **Demand Signal**: Raw searches adjusted by buying intent (informational searches ≠ buyers)
+- **Supply Pressure**: Logarithmic (10k vs 20k competitors has minimal marginal impact)
+- **Momentum is MULTIPLICATIVE**: Growth amplifies opportunity, doesn't just add to it
+- **No revenue theater**: No fictional conversion rates or price projections
+
 **Score Ranges:**
-- **80-100**: Gold mine. High demand, low competition. Act fast.
-- **60-79**: Solid opportunity. Viable with good execution.
-- **40-59**: Risky. Requires expertise and differentiation.
-- **0-39**: Avoid. Poor demand/supply ratio.
+- **70-100**: Excellent. High qualified demand, low competition.
+- **50-69**: Viable. Good ratio, requires strong execution.
+- **30-49**: Risky. Compressed margins or weak demand.
+- **0-29**: Avoid. Fundamentals don't work.
 
 **Example (Yoga Mat):**
 ```
 Monthly searches: 7,200
-Conversion rate: 2.5% (from purchase intent)
-Avg price: $49.00
-→ Demand Monetized: $8,842/month
+Purchase intent: 60/100
+→ Demand Signal: 7,200 × 0.6 = 4,320
 
 Total supply: 29,579 listings
 → Supply Pressure: log₁₀(29,579) = 4.47
 
-Base Score: 8,842 / 4.47 / 100 = 19.8
-+ Intent Bonus: +12.0 (60/100 purchase intent)
-+ Momentum: +5.0 (velocity: 0.09)
-- Saturation Penalty: -30.0 (>10k listings)
-= Final Score: 6.8/100 ❌
+Base Ratio: 4,320 / 4.47 = 967
+
+Velocity: 0.09
+→ Momentum: 1 + (0.09 × 0.5) = 1.045x
+
+Score: (967 × 1.045) / 50 = 20.2
+- Saturation Penalty: -10 (>10k listings)
+= Final Score: 10.2/100 ❌
 ```
 
 ---
@@ -79,64 +87,50 @@ monthly_searches = (interest_score / 100) × 10,000
 # Interest 10  → 1,000 searches/month
 ```
 
+**Limitation:** This is an estimate. Actual volumes may vary, but ratios between keywords remain proportional.
+
 **Source:** SerpAPI Google Trends (12-month historical data)
 
 ---
 
 ### 3. **Purchase Intent Score (0-100)**
 
-Measures commercial intent based on marketplace activity.
+Measures commercial intent based on Google Shopping activity.
 
 **Components:**
-- **Shopping Results Available (0-40 pts):** Products listed on Google Shopping
-- **Average Price Exists (0-30 pts):** Active market with pricing data
-- **Product Variety (0-30 pts):** Multiple sellers indicate healthy competition
+- **Shopping Results Available (0-40 pts):** Products actively listed
+- **Product Presence (0-30 pts):** Results in first page (market activity)
+- **Product Variety (0-30 pts):** Multiple sellers (competitive market)
 
 **Interpretation:**
 - **70-100**: Transactional keywords (people ready to buy)
 - **40-70**: Mixed intent (research + buying)
 - **0-40**: Informational (low purchase likelihood)
 
+**Why no prices?**
+Price extraction is unreliable and doesn't improve scoring accuracy. Purchase intent from product availability is sufficient.
+
 **Source:** SerpAPI Google Shopping API
 
 ---
 
-### 4. **Estimated Conversion Rate**
+### 4. **Demand Signal**
 
-Predicted purchase rate based on purchase intent signals.
+Qualified monthly searches adjusted for buying intent.
 
-**Benchmarks:**
 ```
-Purchase Intent 70-100  → 3.0% conversion (transactional)
-Purchase Intent 50-70   → 2.5% conversion (medium intent)
-Purchase Intent 30-50   → 1.5% conversion (research phase)
-Purchase Intent 0-30    → 1.0% conversion (informational)
+Demand Signal = monthly_searches × (purchase_intent / 100)
+
+Example:
+10,000 searches × 0.7 intent = 7,000 qualified searches
+10,000 searches × 0.3 intent = 3,000 qualified searches
 ```
 
-These rates reflect dropshipping industry standards (1-3%).
+This separates "bluetooth headphones" (high intent) from "bluetooth headphones history" (informational).
 
 ---
 
-### 5. **Potential Monthly Revenue**
-
-Theoretical revenue if capturing market share.
-
-```
-Revenue = monthly_searches × conversion_rate × avg_price
-
-Example (Yoga Mat):
-7,200 searches × 0.025 conversion × $49.00 = $8,842/month
-```
-
-This assumes you convert at the estimated rate. Actual revenue depends on:
-- Product quality and differentiation
-- Marketing effectiveness
-- Pricing strategy
-- Competition positioning
-
----
-
-### 6. **Competition Level**
+### 5. **Competition Level**
 
 Supply saturation classification based on total marketplace listings.
 
@@ -151,7 +145,7 @@ Supply saturation classification based on total marketplace listings.
 
 ---
 
-### 7. **Supply Pressure**
+### 6. **Supply Pressure**
 
 Logarithmic competition metric reflecting diminishing competitive impact at scale.
 
@@ -159,13 +153,32 @@ Logarithmic competition metric reflecting diminishing competitive impact at scal
 Supply Pressure = log₁₀(total_supply + 10)
 
 Examples:
-100 listings   → log₁₀(110) = 2.04
-1,000 listings → log₁₀(1,010) = 3.00
+100 listings    → log₁₀(110) = 2.04
+1,000 listings  → log₁₀(1,010) = 3.00
 10,000 listings → log₁₀(10,010) = 4.00
+20,000 listings → log₁₀(20,010) = 4.30
 ```
 
 **Why logarithmic?**
 The competitive difference between 100 and 1,000 sellers is massive (you're buried on page 10). Between 10,000 and 20,000, you're equally invisible—the impact plateaus.
+
+---
+
+### 7. **Base Ratio (Demand/Supply)**
+
+Core economics: qualified demand per unit of competition.
+
+```
+Base Ratio = Demand Signal / Supply Pressure
+
+Interpretation:
+> 5,000  → Excellent (abundant qualified demand per pressure unit)
+2,000-5,000 → Good (viable market)
+500-2,000 → Challenging (tight margins)
+< 500 → Critical (avoid)
+```
+
+This is the fundamental metric before momentum amplification.
 
 ---
 
@@ -183,51 +196,42 @@ velocity > 0    → Slow growth
 velocity ≤ 0    → Declining interest
 ```
 
-**Momentum Bonus:**
-- **+20 pts**: velocity > 1.0 (explosive growth)
-- **+10 pts**: velocity > 0.5 (healthy growth)
-- **+5 pts**: velocity > 0 (slight growth)
+**Why velocity matters:**
+A keyword with velocity 1.5 is experiencing exponential growth—demand next month will be higher than this month.
 
 ---
 
-### 9. **Demand/Supply Ratio**
+### 9. **Momentum Multiplier**
 
-Direct ratio showing monetized demand per competitor.
+Amplification factor applied to base ratio.
 
 ```
-Ratio = potential_monthly_revenue / (total_supply + 1)
+Momentum Multiplier = 1 + (velocity × 0.5)
+Capped at 2.0x maximum
 
-Example (Yoga Mat):
-$8,842 / 29,580 = 0.299
-
-Interpretation:
-> 1.0   → Excellent (demand exceeds supply significantly)
-0.5-1.0 → Good (balanced market)
-0.1-0.5 → Poor (oversaturated)
-< 0.1   → Critical (avoid)
+Examples:
+velocity 0.0  → 1.00x (no amplification)
+velocity 0.5  → 1.25x
+velocity 1.0  → 1.50x
+velocity 2.0  → 2.00x (viral, doubles the score)
 ```
+
+**Why multiplicative?**
+Growth amplifies opportunity—it doesn't just add a bonus. A product with 5,000 demand and 2x momentum is fundamentally different from 5,000 demand + flat growth.
 
 ---
 
-### 10. **Score Breakdown**
+### 10. **Saturation Penalty**
 
-Transparent decomposition of how the final score was calculated.
+Additional penalty for extreme competition.
 
-**Components:**
-- **Base Score (0-60):** Core demand/supply economics
-- **Intent Bonus (0-20):** Purchase readiness adjustment
-- **Momentum Bonus (0-20):** Growth trend reward
-- **Saturation Penalty (0-30):** Competition penalty
-
-**Example (Yoga Mat):**
 ```
-Base Score: 19.8/60 🔴  (weak fundamentals)
-Intent Bonus: +12.0     (moderate buying intent)
-Momentum: +5.0          (slight growth)
-Saturation Penalty: -30.0 🔴 (extreme competition)
-─────────────────────
-Final Score: 6.8/100 ❌
+total_supply > 20,000  → -15 pts
+total_supply > 10,000  → -10 pts
+Otherwise              → 0 pts
 ```
+
+Prevents scores from looking viable when competition is insurmountable.
 
 ---
 
@@ -237,15 +241,15 @@ Final Score: 6.8/100 ❌
 
 ```
 ┏━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃ Rank ┃ Keyword   ┃  Score ┃ Revenue/Mo ┃ Searches/Mo┃ Competition  ┃ Status     ┃
-┃  1   ┃ yoga mat  ┃   6.8  ┃   $8,842   ┃    7,200   ┃ EXTREME 🔴   ┃ ❌ EVITAR  ┃
+┃ Rank ┃ Keyword   ┃  Score ┃   Demand   ┃   Supply   ┃ Competition  ┃ Status     ┃
+┃  1   ┃ yoga mat  ┃  10.2  ┃    4,320   ┃   29,579   ┃ EXTREME 🔴   ┃ ❌ EVITAR  ┃
 ```
 
 **Key insights:**
-- **Score 6.8/100:** Economically unviable
-- **Revenue $8,842/month:** Decent demand exists
-- **29,579 listings:** Market is oversaturated (supply pressure 4.47)
-- **Ratio 0.299:** Each competitor gets ~$0.30 revenue—unsustainable
+- **Score 10.2/100:** Economically unviable
+- **Demand Signal 4,320:** Decent qualified demand exists
+- **29,579 listings:** Market is oversaturated (pressure 4.47)
+- **Base Ratio 967:** Demand/pressure insufficient to overcome saturation
 
 ---
 
@@ -253,25 +257,25 @@ Final Score: 6.8/100 ❌
 
 The verdict explains mathematically why a product scores high or low.
 
-**For Low Scores (0-39):**
+**For Low Scores (0-29):**
 ```
-❌ EVITAR (6.8/100)
+❌ EVITAR (10.2/100)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Potencial mensual: $8,842
-Competencia: 29,579 ofertas
-Ratio D/O: 0.299 (PÉSIMO)
+Demanda cualificada: 4,320 búsquedas/mes
+Competencia: 29,579 ofertas (EXTREME 🔴)
+Ratio D/S: 967.2 (CRÍTICO)
 
 💀 Problema crítico: Extrema saturación (29,579 ofertas)
-   Supply pressure = log₁₀(29,579) = 4.47
-   → Divides tu revenue entre 4.47
+   Supply pressure 4.47 divide tu demanda hasta volverla inviable
+   Momentum: 1.05x (no salva el ratio base)
 
-→ Pérdida de tiempo y dinero garantizada.
+→ Mercado inviable. Buscar otro nicho.
 ```
 
 **Key diagnosis:**
-- Problem identified: Extreme saturation
-- Mathematical explanation: High supply pressure (4.47) crushes the revenue potential
-- Verdict: Avoid—poor unit economics
+- Problem identified: Extreme saturation crushes the ratio
+- Mathematical explanation: Even with momentum amplification, base ratio is too low
+- Verdict: Avoid—unit economics don't work
 
 ---
 
@@ -287,13 +291,18 @@ Running with `--temporal` flag generates multi-timeframe analysis (7d, 1m, 3m, 6
 **Output:** `data/output/temporal_analysis.csv`
 
 ```csv
-keyword,period,score,potential_revenue,competition_level,trend_velocity,data_points
-yoga mat,7d,8.2,8842,EXTREME 🔴,0.15,7
-yoga mat,1m,7.5,8842,EXTREME 🔴,0.12,30
-yoga mat,3m,6.8,8842,EXTREME 🔴,0.09,90
+keyword,period,score,demand_signal,competition_level,trend_velocity,momentum_multiplier,data_points
+yoga mat,7d,15.2,5100,EXTREME 🔴,0.85,1.43,7
+yoga mat,1m,12.8,4680,EXTREME 🔴,0.42,1.21,30
+yoga mat,3m,10.2,4320,EXTREME 🔴,0.09,1.05,90
 ```
 
-**Interpretation:** Score decreases with more data (velocity slows), confirming it's not an emerging opportunity.
+**Interpretation:**
+- **7d score (15.2)**: Recent spike with high velocity (0.85)
+- **1m score (12.8)**: Velocity normalizing (0.42)
+- **3m score (10.2)**: Long-term average shows weak fundamentals (0.09)
+
+**Verdict:** The 7-day spike is noise. 3-month view reveals the true (poor) opportunity.
 
 ---
 
@@ -306,7 +315,7 @@ python main.py --keywords "phone case,yoga mat"
 # Use trending searches
 python main.py --trending
 
-# Generate temporal analysis
+# Generate temporal analysis (recommended)
 python main.py --keywords "bluetooth headphones" --temporal
 ```
 
@@ -326,21 +335,21 @@ All scraping handled by SerpAPI to avoid bot detection.
 
 ## Limitations
 
-1. **Estimated conversion rates:** Industry benchmarks, not product-specific
-2. **Search volume scaling:** Relative interest scaled to 10k baseline (not absolute Google data)
-3. **Price averages:** From top 20 Shopping results (may not reflect full market)
-4. **Competition:** Counts all listings (doesn't assess quality/ranking)
+1. **Estimated search volumes:** Relative interest scaled to 10k baseline (not absolute Google data)
+2. **Purchase intent heuristic:** Based on product availability, not actual click-through data
+3. **Competition counts:** Total listings (doesn't assess seller quality/ranking)
+4. **No cost data:** Doesn't factor in CAC, COGS, or margin estimates
 
-**Recommendation:** Use scores as initial screening. Validate top opportunities with manual research before committing capital.
+**Recommendation:** Use scores as initial screening. Validate top opportunities (score >50) with manual research before investing capital.
 
 ---
 
 ## Key Takeaways
 
-- **Opportunity Score combines economics + momentum** into a single 0-100 metric
-- **Log-scaled supply** reflects real competitive dynamics (10k vs 20k listings has minimal impact difference)
-- **Verdicts explain WHY** a score is high/low using the underlying math
-- **Temporal analysis** validates consistency and filters noise
-- **Not a guarantee:** A score of 80 means strong fundamentals, not guaranteed profit
+- **Opportunity Score = (Demand/Competition) × Momentum** in a single 0-100 metric
+- **Momentum is multiplicative** because growth amplifies opportunity, not adds to it
+- **No revenue projections** because they're unreliable without real conversion/pricing data
+- **Temporal analysis is critical** to separate noise from signal
+- **Score >70 = strong fundamentals, not guaranteed profit**
 
-Use this tool to filter noise and focus manual research on high-potential niches.
+Use this tool to filter noise and focus research on mathematically sound niches.

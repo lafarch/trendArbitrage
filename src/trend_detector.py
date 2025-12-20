@@ -114,7 +114,6 @@ class TrendDetector:
         Returns:
             {
                 'shopping_results': 150,
-                'avg_price': 24.99,
                 'purchase_intent_score': 75  # 0-100
             }
         """
@@ -131,40 +130,43 @@ class TrendDetector:
             shopping_results = results.get("shopping_results", [])
             total_results = results.get("search_information", {}).get("total_results", 0)
             
-            # Extraer precios de los primeros 20 resultados
-            prices = []
-            for item in shopping_results[:20]:
-                price_str = item.get("extracted_price", 0)
-                if price_str:
-                    try:
-                        prices.append(float(price_str))
-                    except:
-                        continue
-            
-            avg_price = round(np.mean(prices), 2) if prices else 0
-            
             # CALCULAR PURCHASE INTENT (0-100)
             purchase_intent = 0
             
-            # Factor 1: Disponibilidad de productos en Shopping (0-40 pts)
-            if total_results > 0:
-                purchase_intent += min(40, (total_results / 100) * 10)
-            
-            # Factor 2: Precio promedio existe = mercado activo (0-30 pts)
-            if avg_price > 0:
+            # Factor 1: Volumen de productos disponibles (0-50 pts)
+            # Escala progresiva: más productos = mayor intención comercial
+            if total_results >= 1000:
+                purchase_intent += 50
+            elif total_results >= 500:
+                purchase_intent += 40
+            elif total_results >= 100:
                 purchase_intent += 30
+            elif total_results >= 50:
+                purchase_intent += 20
+            elif total_results > 0:
+                purchase_intent += 10
             
-            # Factor 3: Variedad de precios = mercado competitivo (0-30 pts)
-            if len(prices) >= 10:
+            # Factor 2: Calidad de resultados (productos con data completa) (0-30 pts)
+            if len(shopping_results) >= 15:
                 purchase_intent += 30
-            elif len(prices) >= 5:
-                purchase_intent += 15
+            elif len(shopping_results) >= 10:
+                purchase_intent += 20
+            elif len(shopping_results) >= 5:
+                purchase_intent += 10
+            
+            # Factor 3: Diversidad de vendedores (0-20 pts)
+            unique_sources = len(set(item.get("source", "") for item in shopping_results[:20]))
+            if unique_sources >= 10:
+                purchase_intent += 20
+            elif unique_sources >= 5:
+                purchase_intent += 10
+            elif unique_sources >= 3:
+                purchase_intent += 5
             
             logger.info(f"Purchase intent for '{keyword}': {purchase_intent:.1f}/100")
             
             return {
                 "shopping_results": total_results,
-                "avg_price": avg_price,
                 "purchase_intent_score": round(purchase_intent, 1),
             }
             
@@ -172,7 +174,6 @@ class TrendDetector:
             logger.warning(f"Could not fetch shopping data for '{keyword}': {e}")
             return {
                 "shopping_results": 0,
-                "avg_price": 0,
                 "purchase_intent_score": 0,
             }
 
@@ -288,16 +289,8 @@ class TrendDetector:
                 
                 # 3. Escalar a búsquedas mensuales reales
                 monthly_searches = self.scale_to_real_searches(avg_interest)
-                
-                # 4. Estimar conversion rate
-                conversion_rate = self.estimate_conversion_rate(
-                    purchase_data["purchase_intent_score"]
-                )
-                
-                # 5. Calcular compradores mensuales estimados
-                monthly_buyers = int(monthly_searches * conversion_rate)
 
-                # Compilar resultado
+                # Compilar resultado (SIN campos de revenue)
                 results.append({
                     "keyword": keyword,
                     "interest_score": avg_interest,
@@ -308,13 +301,10 @@ class TrendDetector:
                     "is_rising": is_rising,
                     "velocity": trend_slope,
                     "history": history_points,
-                    # Nuevos campos comerciales
+                    # Campos comerciales simplificados
                     "monthly_searches": monthly_searches,
                     "purchase_intent_score": purchase_data["purchase_intent_score"],
-                    "avg_price": purchase_data["avg_price"],
                     "shopping_results": purchase_data["shopping_results"],
-                    "estimated_conversion_rate": round(conversion_rate, 4),
-                    "estimated_monthly_buyers": monthly_buyers,
                 })
                 
                 time.sleep(1)  # Rate limiting
@@ -328,7 +318,7 @@ class TrendDetector:
         if df.empty:
             return pd.DataFrame(columns=[
                 "keyword", "interest_score", "viability_score", "monthly_searches",
-                "purchase_intent_score", "avg_price", "history"
+                "purchase_intent_score", "history"
             ])
 
         return df
