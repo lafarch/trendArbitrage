@@ -1,0 +1,278 @@
+{
+  "keyword": "test",
+  "simulation_method": "math_intent_based",
+  "metrics": {
+    "opportunity_score": 0,
+    "supply_total": 241320,
+    "competition_level": "EXTREME 🔴",
+    "avg_monthly_searches": 5598,
+    "estimated_monthly_sales": 83
+  },
+  "timeline": [
+    {
+      "date": "Dec 15 – 21, 2024",
+      "trend_index": 53,
+      "estimated_sales": 21
+    },
+    {
+      "date": "Dec 22 – 28, 2024",
+      "trend_index": 41,
+      "estimated_sales": 17
+    },
+    {
+      "date": "Dec 29, 2024 – Jan 4, 2025",
+      "trend_index": 47,
+      "estimated_sales": 19
+    },
+    {
+      "date": "Jan 5 – 11, 2025",
+      "trend_index": 52,
+      "estimated_sales": 21
+    },
+    {
+      "date": "Jan 12 – 18, 2025",
+      "trend_index": 54,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Jan 19 – 25, 2025",
+      "trend_index": 50,
+      "estimated_sales": 20
+    },
+    {
+      "date": "Jan 26 – Feb 1, 2025",
+      "trend_index": 55,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Feb 2 – 8, 2025",
+      "trend_index": 55,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Feb 9 – 15, 2025",
+      "trend_index": 52,
+      "estimated_sales": 21
+    },
+    {
+      "date": "Feb 16 – 22, 2025",
+      "trend_index": 56,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Feb 23 – Mar 1, 2025",
+      "trend_index": 56,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Mar 2 – 8, 2025",
+      "trend_index": 55,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Mar 9 – 15, 2025",
+      "trend_index": 57,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Mar 16 – 22, 2025",
+      "trend_index": 54,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Mar 23 – 29, 2025",
+      "trend_index": 57,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Mar 30 – Apr 5, 2025",
+      "trend_index": 57,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Apr 6 – 12, 2025",
+      "trend_index": 57,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Apr 13 – 19, 2025",
+      "trend_index": 55,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Apr 20 – 26, 2025",
+      "trend_index": 55,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Apr 27 – May 3, 2025",
+      "trend_index": 57,
+      "estimated_sales": 23
+    },
+    {
+      "date": "May 4 – 10, 2025",
+      "trend_index": 62,
+      "estimated_sales": 25
+    },
+    {
+      "date": "May 11 – 17, 2025",
+      "trend_index": 58,
+      "estimated_sales": 24
+    },
+    {
+      "date": "May 18 – 24, 2025",
+      "trend_index": 54,
+      "estimated_sales": 22
+    },
+    {
+      "date": "May 25 – 31, 2025",
+      "trend_index": 51,
+      "estimated_sales": 21
+    },
+    {
+      "date": "Jun 1 – 7, 2025",
+      "trend_index": 55,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Jun 8 – 14, 2025",
+      "trend_index": 54,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Jun 15 – 21, 2025",
+      "trend_index": 54,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Jun 22 – 28, 2025",
+      "trend_index": 56,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Jun 29 – Jul 5, 2025",
+      "trend_index": 50,
+      "estimated_sales": 20
+    },
+    {
+      "date": "Jul 6 – 12, 2025",
+      "trend_index": 57,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Jul 13 – 19, 2025",
+      "trend_index": 57,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Jul 20 – 26, 2025",
+      "trend_index": 56,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Jul 27 – Aug 2, 2025",
+      "trend_index": 64,
+      "estimated_sales": 26
+    },
+    {
+      "date": "Aug 3 – 9, 2025",
+      "trend_index": 55,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Aug 10 – 16, 2025",
+      "trend_index": 60,
+      "estimated_sales": 24
+    },
+    {
+      "date": "Aug 17 – 23, 2025",
+      "trend_index": 56,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Aug 24 – 30, 2025",
+      "trend_index": 54,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Aug 31 – Sep 6, 2025",
+      "trend_index": 53,
+      "estimated_sales": 21
+    },
+    {
+      "date": "Sep 7 – 13, 2025",
+      "trend_index": 50,
+      "estimated_sales": 20
+    },
+    {
+      "date": "Sep 14 – 20, 2025",
+      "trend_index": 56,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Sep 21 – 27, 2025",
+      "trend_index": 57,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Sep 28 – Oct 4, 2025",
+      "trend_index": 55,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Oct 5 – 11, 2025",
+      "trend_index": 54,
+      "estimated_sales": 22
+    },
+    {
+      "date": "Oct 12 – 18, 2025",
+      "trend_index": 56,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Oct 19 – 25, 2025",
+      "trend_index": 56,
+      "estimated_sales": 23
+    },
+    {
+      "date": "Oct 26 – Nov 1, 2025",
+      "trend_index": 51,
+      "estimated_sales": 21
+    },
+    {
+      "date": "Nov 2 – 8, 2025",
+      "trend_index": 90,
+      "estimated_sales": 37
+    },
+    {
+      "date": "Nov 9 – 15, 2025",
+      "trend_index": 100,
+      "estimated_sales": 41
+    },
+    {
+      "date": "Nov 16 – 22, 2025",
+      "trend_index": 58,
+      "estimated_sales": 24
+    },
+    {
+      "date": "Nov 23 – 29, 2025",
+      "trend_index": 46,
+      "estimated_sales": 19
+    },
+    {
+      "date": "Nov 30 – Dec 6, 2025",
+      "trend_index": 53,
+      "estimated_sales": 21
+    },
+    {
+      "date": "Dec 7 – 13, 2025",
+      "trend_index": 51,
+      "estimated_sales": 21
+    },
+    {
+      "date": "Dec 14 – 20, 2025",
+      "trend_index": 53,
+      "estimated_sales": 21
+    }
+  ]
+}
